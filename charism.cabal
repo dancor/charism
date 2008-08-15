@@ -1,0 +1,11 @@
+name:           charism
+version:        0.1
+license:        BSD3
+author:         danl@alum.mit.edu
+synopsis:       texttwist clone that uses scrabble letter probabilities
+build-depends:  base, bytestring, haskell98, mtl, directory, containers, random, Util
+build-type:     Simple
+
+executable:     charism
+hs-source-dirs: src
+main-is:        Main.hs

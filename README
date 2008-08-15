@@ -1,0 +1,107 @@
+BUILDING
+
+~ runghc Setup.hs configure
+~ runghc Setup.hs build
+~ sudo runghc Setup.hs install
+
+DICTIONARY
+
+- currently just hardcoded to /usr/share/dict/scrabble
+- recommended to grab owl scrabble list:
+  ~ wget http://dzl.no-ip.org/g/scrab/owl.txt.bz2
+  ~ bunzip2 owl.txt.bz2
+  ~ sudo mv owl.txt /usr/share/dict/owl
+  ~ sudo ln -s /usr/share/dict/owl /usr/share/dict/scrabble
+- or use another list that you prefer
+
+GAMEPLAY
+
+- type out words
+- space shuffles letters on rack
+- enter submits a word
+- escape goes to the next round
+- ctrl+c quits
+
+OLD NOTES
+
+- name ideas
+  - charism
+  - chorizo
+  - karst
+  - karstic
+  - lexis
+  - lexemic
+- binary encoding Trie was not worth it
+- bytestring load cuts time from about 3s to 2s but limits us to ascii
+
+- penalty for wrong words?  (count bad ones, or have timer with time deduction)
+
+- restrict to high point words?  currently studying lots of common-letter small
+  words (less useful..?)
+
+- wn_i := number words wide of i-letter words section
+- w := total width
+- h := total height
+- h_i := height of section of i-letter words
+- w_i := width of section of i-letter words
+- n_i := number of i-letter words
+
+w = max_i w_i
+h = n - 1 + sum_i h_i
+h_i = ceil(n_i / wn_i)
+w_i = wn_i * i + wn_i - 1
+=> wn_i = (w_i + 1) / (i + 1)
+
+so
+h ~= n - 1 + sum_i n_i (i + 1) / (w_i + 1)
+  ~= n - 1 + sum_i n_i (i + 1) / (w + 1)
+   = n - 1 + (n + sum_i i*n_i) / (w + 1)
+
+w = (n + sum_i i*n_i) / (h + 1 - n) - 1
+
+e.g. n = 4 and w = 10
+h = 2
+
+w = n (n + 1) / h - 1
+
+
+aa ab ac ad
+ae af ag ah
+ai
+aaa aab aac
+aad aae
+
+w = 11
+w_1 = 11
+w_2 = 11
+h_1 = 3
+h_2 = 2
+n_1 = 9
+n_2 = 5
+wn_1 = 4
+wn_2 = 3
+n = 14
+h = 5
+
+
+h_i = ceil(n_i / wn_i)
+3 = ceil(9 / 4) YES
+2 = ceil(5 / 3) YES
+
+
+wn_i = (w_i + 1) / (n_i + 1)
+i = 1: 4 = 12 / 10 no
+
+h = sum_i ceil(n_i / wn_i)
+  = 3 + 2
+
+ ~= sum_i n_i / wn_i
+  = 9 / 4 + 5 / 3 = 47 / 12 = just under 4
+
+ ~= sum_i n_i (n_i + 1) / (w + 1)
+  = (n + sum_i n_i^2) / (w + 1)
+  = (14 + 106) / 12 = 10  NO
+
+
+h = (n + 1) sum_i n_i / (w_i + 1)
+5 = 15 * (9 / 12 + 5 / 12)   NO
