@@ -36,7 +36,6 @@ procOpt s (n, m, o) = case s of
     else error "invalid word order"
 
 lexFN = "/usr/share/dict/scrabble"
-trieFN = "trie.dat"
 
 ltrCnts :: [Int]
 ltrCnts = [
