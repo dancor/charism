@@ -135,7 +135,12 @@ askWd wdOrig wd wds wdsGot wdPartial wdWrongMby fullDraw = do
     ++ clL ++ wrongStr ++ clL ++ wdPartial ++ "\027[K\027[J"
   hFlush stdout
   c <- hGetChar stdin
-  let c' = toUpper c
+  let
+    c' = toUpper c
+    delAct = if null wdPartial
+      then return (wd, "", wdsGot, Nothing, False, False)
+      else return (replPos (length $ takeWhile (/= '.') wd) wd $ last
+        wdPartial, init wdPartial, wdsGot, Nothing, False, False)
   (wd', wdPartial', wdsGot', wdWrongMby', fullDraw', quit) <- case c' of
     ' '  -> newStdGen >>= \g -> return
       (shuffle g wd, wdPartial, wdsGot, Nothing, False, False)
@@ -147,11 +152,9 @@ askWd wdOrig wd wds wdsGot wdPartial wdWrongMby fullDraw = do
       S.toList $ (S.fromList wds) `S.difference` (S.fromList wdsGot),
       Nothing, True, False)
     '\027' -> return (wdOrig, "", wdsGot, Nothing, False, True)
-    -- hack, shouldn't be echoing to begin with right:
-    '\008' -> when (null wdPartial) (putStrLn "") >> if null wdPartial
-      then return (wd, "", wdsGot, Nothing, False, False)
-      else return (replPos (length $ takeWhile (/= '.') wd) wd $ last
-        wdPartial, init wdPartial, wdsGot, Nothing, False, False)
+    '\008' -> delAct
+    '\DEL' -> delAct
+    '\f' -> return (wd, wdPartial, wdsGot, Nothing, True, False)
     _    -> if c' /= '.' && c' `elem` wd
       then return (replPos (length $ takeWhile (/= c') wd) wd '.',
 	wdPartial ++ [c'], wdsGot, Nothing, False, False)
