@@ -3,7 +3,8 @@ version:        0.1
 license:        BSD3
 author:         danl@alum.mit.edu
 synopsis:       texttwist clone that uses scrabble letter probabilities
-build-depends:  base, bytestring, haskell98, mtl, directory, containers, random, Util
+build-depends:  base, bytestring, haskell98, mtl, directory, containers,
+                random, FUtil, MonadRandom
 build-type:     Simple
 
 executable:     charism

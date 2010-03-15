@@ -2,20 +2,22 @@
 
 module Main where
 
+import Control.Applicative
 import Control.Exception (evaluate)
 import Control.Monad
-import qualified Data.ByteString.Char8 as B
+import Control.Monad.Random
 import Data.Char
-import qualified Data.Map as M
-import qualified Data.List as L
 import Data.Maybe
-import qualified Data.Set as S
-import qualified Data.Trie as T
+import FUtil
 import System
 import System.Console.GetOpt
 import System.IO
 import System.Random
-import Util
+import qualified Data.ByteString.Char8 as B
+import qualified Data.List as L
+import qualified Data.Map as M
+import qualified Data.Set as S
+import qualified Data.Trie as T
 
 type Lex = T.Trie Char ()
 
@@ -35,6 +37,7 @@ procOpt s (n, m, o) = case s of
     then (n, m, read o')
     else error "invalid word order"
 
+lexFN :: String
 lexFN = "/usr/share/dict/scrabble"
 
 ltrCnts :: [Int]
@@ -44,12 +47,22 @@ ltrCnts = [
   6, 8, 2, 1, 6, 8{-4-},  -- N - S   -- double s's since ppl tend to hold them
   6, 4, 2, 2, 1, 2, 1]  -- T - Z
 
+enumerate :: [a] -> [(Int, a)]
 enumerate = zip [0..]
 
-rep n x = take n $ repeat x
-
 ltrs :: String
-ltrs = concat $ map (\ (i, c) -> rep c $ chr $ i + ord 'A') $ enumerate ltrCnts
+ltrs = concat . map (\ (i, c) -> replicate c . chr $ i + ord 'A') $
+  enumerate ltrCnts
+
+-- pull tiles out of bag that happen to make words
+ltrWds :: Lex -> Int -> Rand StdGen [String]
+ltrWds lex wdLen = do
+  -- TODO more concise?
+  wd <- take wdLen <$> shuffle ltrs
+  (case allFullWds lex wd of
+    [] -> id
+    _ -> (wd:)
+    ) <$> ltrWds lex wdLen
 
 splitOut :: [x] -> Int -> (x, [x])
 splitOut xs i = (head p2, p1 ++ tail p2) where (p1, p2) = splitAt i xs
@@ -84,13 +97,6 @@ allFullWds (T.Trie _ rem)  cs = r
         Just trie -> [[c] ++ wd | wd <- allFullWds trie cs_rem]
       ) $ splitOuts cs
 
--- iterate throgh random selected letters until have word
-findWd :: StdGen -> Lex -> Int -> String
-findWd g lex wdLen = head $ dropWhile (null . allFullWds lex) $ wdList g where
-  wdList :: StdGen -> [String]
-  wdList g = [take wdLen $ shuffle g ltrs] ++ wdList g' where
-    (g', g'') = split g
-
 mapMap :: Ord k => M.Map k v -> [k] -> [v]
 mapMap m = map (\k -> fromJust $ M.lookup k m)
 
@@ -101,9 +107,7 @@ funOrd mapOrd a b = if aN > bN then GT else if aN < bN then LT else
     aN = length a
     bN = length b
 
--- how is this not in prelude?
-swap (a, b) = (b, a)
-
+replPos :: Int -> [a] -> a -> [a]
 replPos i xs x = take i xs ++ [x] ++ drop (i + 1) xs
 
 squashList :: Int -> Int -> [String] -> [String]
@@ -113,37 +117,37 @@ squashList width wdLen wds = map interwords $ splitN wdsPerLine wds where
 askWd :: String -> String -> [String] -> [String] -> String -> Maybe String ->
   Bool -> IO ()
 askWd wdOrig wd wds wdsGot wdPartial wdWrongMby fullDraw = do
-  let lenToWds = M.fromListWith (++) $ map renderWd wds where
-        renderWd w = (wL, [if w `elem` wdsGot then w else rep wL '.']) where
-          wL = length w
-      maxHeight = 25
-      n = length wds
-      charWidth = ceiling (fromIntegral
-        (n + (sum $ map (\ (i, ws) -> i * length ws) $ M.toList lenToWds)) /
-        fromIntegral (maxHeight + 1 - length (M.toList lenToWds))) - 1
-      list = interlines $ L.intercalate [[]] $
-        map (uncurry (squashList charWidth)) $ M.toList lenToWds
   let
+    lenToWds = M.fromListWith (++) $ map renderWd wds where
+      renderWd w = (wL, [if w `elem` wdsGot then w else replicate wL '.']) where
+        wL = length w
+    maxHeight = 25
+    n = length wds
+    charWidth = ceiling (fromIntegral
+      (n + (sum $ map (\ (i, ws) -> i * length ws) $ M.toList lenToWds)) /
+      fromIntegral (maxHeight + 1 - length (M.toList lenToWds))) - 1
+    list = interlines $ L.intercalate [[]] $
+      map (uncurry (squashList charWidth)) $ M.toList lenToWds
     wrongStr = if isNothing wdWrongMby || length (fromJust wdWrongMby) < 3
       then ""
       else "\"" ++ fromJust wdWrongMby ++ "\" is not a word"
     clL = "\027[K\n"
   putStr $ (if fullDraw
-    then "\027[0;0H" ++ list ++ concat (rep 4 clL)
+    then "\027[0;0H" ++ list ++ concat (replicate 4 clL)
     --then "\027[0;0H\n" ++ concatMap (show . ord) ("x" ++ wdPartial ++ "x")
     else "\027[2A\r") ++ (L.intersperse ' ' wd)
     ++ clL ++ wrongStr ++ clL ++ wdPartial ++ "\027[K\027[J"
   hFlush stdout
   c <- hGetChar stdin
   let
-    c' = toUpper c
+    cU = toUpper c
     delAct = if null wdPartial
       then return (wd, "", wdsGot, Nothing, False, False)
       else return (replPos (length $ takeWhile (/= '.') wd) wd $ last
         wdPartial, init wdPartial, wdsGot, Nothing, False, False)
-  (wd', wdPartial', wdsGot', wdWrongMby', fullDraw', quit) <- case c' of
+  (wd', wdPartial', wdsGot', wdWrongMby', fullDraw', quit) <- case cU of
     ' '  -> newStdGen >>= \g -> return
-      (shuffle g wd, wdPartial, wdsGot, Nothing, False, False)
+      (fst $ runRand (shuffle wd) g, wdPartial, wdsGot, Nothing, False, False)
     '\n' -> if wdPartial `elem` wds
       then return (wdOrig, "", wdsGot ++ [wdPartial], Nothing, True, False)
       else putStr "\027[A" >>
@@ -155,9 +159,9 @@ askWd wdOrig wd wds wdsGot wdPartial wdWrongMby fullDraw = do
     '\008' -> delAct
     '\DEL' -> delAct
     '\f' -> return (wd, wdPartial, wdsGot, Nothing, True, False)
-    _    -> if c' /= '.' && c' `elem` wd
-      then return (replPos (length $ takeWhile (/= c') wd) wd '.',
-	wdPartial ++ [c'], wdsGot, Nothing, False, False)
+    _    -> if cU /= '.' && cU `elem` wd
+      then return (replPos (length $ takeWhile (/= cU) wd) wd '.',
+	wdPartial ++ [cU], wdsGot, Nothing, False, False)
       else
         return (wd, wdPartial, wdsGot, Nothing, False, False)
   unless quit $ askWd wdOrig wd' wds wdsGot' wdPartial' wdWrongMby' fullDraw'
@@ -165,31 +169,37 @@ askWd wdOrig wd wds wdsGot wdPartial wdWrongMby fullDraw = do
 main :: IO ()
 main = do
   args <- getArgs
-  (opts, a) <- case getOpt Permute options args of
-    (o, n, [])   -> return (o, n)
-    (_, _, errs) -> ioError (userError (concat errs ++
-      usageInfo header options)) where header = "Usage:"
-  let (wdLen, wdLenMin, wdOrd) = foldr procOpt (7, 3, "a") opts
+  let
+    header = "Usage:"
+    (opts, a) = case getOpt Permute options args of
+      (o, n, [])   -> (o, n)
+      (_, _, errs) -> error $ concat errs ++ usageInfo header options
+    (wdLen, wdLenMin, wdOrd) = foldr procOpt (7, 3, "a") opts
   print "loading lexicon"
   h <- openFile lexFN ReadMode
   c <- B.hGetContents h
-  let ls = B.lines c
-      lenReq = (\ x -> x >= wdLenMin && x <= wdLen) . length
-      lex = T.fromList . map (flip (,) ()) . filter lenReq . map B.unpack $ ls
-  -- does this do anything?  like speed up by loading into memory
-  evaluate lex
-  print "loaded lexicon"
+  let
+    ls = B.lines c
+    lenReq = (\ x -> x >= wdLenMin && x <= wdLen) . length
+    killR = filter (/= '\r')  -- TODO better here (BS func ya?)
+    lex = T.fromList . map (flip (,) ()) . filter lenReq .
+      map (killR . B.unpack) $ ls
+  lex `seq` print "loaded lexicon"
   g <- getStdGen
   askWds g lex wdLen wdOrd
 
+askWds :: StdGen -> Lex -> Int -> [Char] -> IO ()
 askWds g lex wdLen wdOrd = do
-  let (g', g'') = split g
-      wd = findWd g' lex wdLen
-      -- random letter ordering to pseudoalphabetize answers
-      ltrOrd = M.fromList $ map swap $ enumerate $
-        -- why need reverse? (find that bug instead of doing this fix)
-        (if wdOrd == "a" then L.reverse . L.sort else shuffle g') $ L.nub wd
-      wds = L.sortBy (funOrd ltrOrd) $ filter ((> 2) . length) $ allWds lex wd
+  let
+    (g', g'') = split g
+    wd = head . fst $ runRand (ltrWds lex wdLen) g'
+    -- random letter ordering to pseudoalphabetize answers
+    ltrOrd = M.fromList . map swap . enumerate .
+      -- why need reverse? (find that bug instead of doing this fix)
+      (if wdOrd == "a"
+        then L.reverse . L.sort
+        else (\ l -> fst $ runRand (shuffle l) g')) $ L.nub wd
+    wds = L.sortBy (funOrd ltrOrd) $ filter ((> 2) . length) $ allWds lex wd
   hSetBuffering stdin NoBuffering
   putStr "\027[2J"
   hFlush stdout

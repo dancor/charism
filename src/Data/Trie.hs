@@ -10,10 +10,10 @@ import Prelude hiding (lookup)
 
 data Trie k v = Trie (Maybe v) !(M.Map k (Trie k v))
 
-lookup :: (Ord k, Monad m) => [k] -> Trie k v -> m v
+lookup :: (Ord k) => [k] -> Trie k v -> Maybe v
 lookup (x:xs) (Trie _ m)        = lookup xs =<< M.lookup x m
-lookup []     (Trie (Just v) _) = return v
-lookup _      _                 = fail "not in trie"
+lookup []     (Trie (Just v) _) = Just v
+lookup _      _                 = Nothing
 
 empty = Trie Nothing M.empty
 
