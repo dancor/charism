@@ -14,9 +14,9 @@ import qualified Data.ByteString.Char8 as B
 import qualified Data.List as L
 import qualified Data.Map as M
 import qualified Data.Set as S
-import qualified Data.Trie as T
 
 import WordOrder
+import qualified Data.Trie as T
 import qualified Opt
 
 type Lex = T.Trie Char ()

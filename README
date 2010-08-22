@@ -1,8 +1,6 @@
 BUILDING
 
-~ runghc Setup.hs configure
-~ runghc Setup.hs build
-~ sudo runghc Setup.hs install
+~ cabal install
 
 DICTIONARY
 
@@ -21,6 +19,12 @@ GAMEPLAY
 - enter submits a word
 - escape goes to the next round
 - ctrl+c quits
+
+DEVELOPMENT
+
+todo
+- switch to rand monad
+- switch to bytestring-trie, or see if that's faster?
 
 OLD NOTES
 
