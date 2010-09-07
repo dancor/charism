@@ -1,0 +1,234 @@
+<html>
+<head>
+<title>charism</title>
+<style>
+body {
+  margin: 0px 0px 0px 0px;
+  /*overflow-x: hidden;
+  overflow-y: hidden;*/
+}
+</style>
+<script type="text/javascript">
+function onload_arr(a, f) {
+  onload_arr_i(a, f, 0);
+}
+function onload_arr_i(a, f, i) {
+  if (i >= a.length) {
+    f();
+    return;
+  }
+  a[i].onload = function() {onload_arr_i(a, f, i + 1);}
+}
+function last(a) {
+  return a[a.length - 1];
+}
+function ord(c) {
+  return c.charCodeAt(0);
+}
+function chr(i) {
+  return String.fromCharCode(i);
+}
+function shuffle(a) {
+  for (var i = a.length - 1; i >= 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = a[j];
+    a = setCharAt(a, j, a[i]);
+    a = setCharAt(a, i, tmp);
+  }
+  return a;
+}
+function setCharAt(s, i, c) {
+  return s.substring(0, i) + c + s.substring(i + 1);
+}
+function putInFirstEmpty(a, c) {
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] == '@') {
+      return setCharAt(a, i, c);
+    }
+  }
+  throw('something went wrong in putInFirstEmpty');
+}
+window.onload = function() {
+  var canv = document.getElementById("canv");
+  var g = canv.getContext("2d");
+  var winW = 0;
+  var winH = 0;
+  var bag = "";
+  var rack = "@@@@@@@";
+  var wds = [];
+  var wdGot = [];
+  var showSwap = false;
+
+  var ltr = [];
+  for (var i = 0; i <= 26; i++) {
+    ltr[i] = new Image();
+    ltr[i].src = 'img/' + chr(ord('@') + i) + '.png';
+  }
+  var helpImg = new Image();
+  helpImg.src = 'img/help.png';
+
+  function drawLtrs(ltrs, x, y, ltrW, ltrH, interSpace) {
+    for (var i = 0; i < ltrs.length; i++) {
+      g.drawImage(ltr[ord(ltrs[i]) - ord('@')], x + i * (interSpace + ltrW), y, 
+        ltrW, ltrH);
+    }
+  }
+  function resize() {
+    winW = window.innerWidth;
+    winH = window.innerHeight;
+    canv.width = winW;
+    canv.height = winH;
+    g.fillStyle = "#070";
+    g.fillRect(0, 0, winW, winH);
+
+    var bagX = 8;
+    var bagY = 8;
+    var bagInterSpaceX = 8;
+    var bagInterSpaceY = 8;
+    var bagLtrW = 64;
+    var bagLtrH = 64;
+    drawLtrs(bag, bagX, bagY, bagLtrW, bagLtrH, bagInterSpaceX);
+
+    var rackX = bagX;
+    var rackY = bagY + bagLtrH + bagInterSpaceY;
+    var rackInterSpaceX = 8;
+    var rackInterSpaceY = 8;
+    var rackLtrW = 64;
+    var rackLtrH = 64;
+    drawLtrs(rack, rackX, rackY, rackLtrW, rackLtrH, rackInterSpaceX);
+
+    var wdsX = rackX;
+    var wdsY = rackY + rackLtrH + rackInterSpaceY;
+    var wdsInterSpaceX = 4;
+    var wdsInterSpaceY = 4;
+    var wdsColInterSpaceX = 16;
+    var wdsLtrW = 32;
+    var wdsLtrH = 32;
+    var x = wdsX;
+    var y = wdsY;
+    var prevColW = 0;
+    for (var i = 0; i < wds.length; i++) {
+      var curWd;
+      if (wdsGot[i] ^ showSwap) {
+        curWd = wds[i];
+      } else {
+        curWd = '';
+        for (var j = 0; j < wds[i].length; j++) {
+          curWd += '@';
+        }
+      }
+      drawLtrs(curWd, x, y,
+        wdsLtrW, wdsLtrH, wdsInterSpaceX);
+      y += wdsInterSpaceY + wdsLtrH;
+      if (y + wdsInterSpaceY + wdsLtrH > winH) {
+        x += (wds[i].length - 1) * (wdsLtrW + wdsInterSpaceX) + wdsLtrW + 
+          wdsColInterSpaceX;
+        y = wdsY;
+      }
+
+    }
+      
+    g.drawImage(helpImg, winW - helpImg.width, 0);
+  }
+  function rackToBag() {
+    for (var i = 0; i < rack.length; i++) {
+      if (rack[i] != '@') {
+        bag = putInFirstEmpty(bag, rack[i]);
+        rack = setCharAt(rack, i, '@');
+      }
+    }
+  }
+  function keydown(e) {
+    var i = e.keyCode % 128;
+    if (i >= 65 && i <= 90) {
+      var c = chr(i);
+      for (var j = 0; j <= bag.length; j++) {
+        if (bag[j] == c) {
+          for (var k = 0; k <= rack.length; k++) {
+            if (rack[k] == '@') {
+              rack = setCharAt(rack, k, c);
+              break;
+            }
+          }
+          bag = setCharAt(bag, j, '@');
+          resize();
+          break;
+        }
+      }
+    } else if (i == 8) {
+      for (var i = rack.length - 1; i >= 0; i--) {
+        if (rack[i] != '@') {
+          bag = putInFirstEmpty(bag, rack[i]);
+          rack = setCharAt(rack, i, '@');
+          resize();
+          break;
+        }
+      }
+    } else if (i == 32) {
+      bag = shuffle(bag);
+      resize();
+    } else if (i == 13) {
+      var rackWd = '';
+      for (var i = 0; i < rack.length; i++) {
+        if (rack[i] != '@') {
+          rackWd += rack[i];
+        }
+      }
+      for (var i = 0; i < wds.length; i++) {
+        if (wds[i] == rackWd) {
+          wdsGot[i] = true;
+          rackToBag();
+          resize();
+          break;
+        }
+      }
+    } else if (i == 27) {
+      rackToBag();
+      resize();
+    } else if (i == 63) {
+      showSwap = !showSwap;
+      resize();
+    } else {
+      //console.log(i);
+    }
+  }
+  function get_round() {
+    r = new XMLHttpRequest();
+    r.onreadystatechange = function() {
+      if (r.readyState == 4) {
+        wds = JSON.parse(r.responseText);
+        wdsGot = [];
+        for (var i = 0; i < wds.length; i++) {
+          wdsGot[i] = false;
+        }
+        bag = shuffle(last(wds));
+        resize();
+      }
+    }
+    r.open("GET", "ajax/get_round", true);
+    r.send();
+  }
+  function click(e) {
+    if (e.x >= winW - helpImg.width && e.y <= helpImg.height) {
+      alert("Use the keyboard to make words:\n" +
+"- Type letters to move letters to your working rack.\n" + 
+"- Press backspace to move one letter off your working rack.\n" +
+"- Press enter when you have made a word.\n" + 
+"- Press spacebar to shuffle the letters on the source rack.\n" +
+"- Pless ? to show words you haven't gotten.\n" +
+"- Reload the page (ctrl+r) to play another round.");
+    }
+  }
+  
+  window.onresize = resize;
+  window.addEventListener("keydown", keydown);
+  window.addEventListener("click", click);
+  var allImgs = [].concat(ltr, [helpImg]);
+  onload_arr(allImgs, get_round);
+}
+</script>
+</head>
+<body>
+<canvas id="canv"></canvas>
+</body>
+</html>

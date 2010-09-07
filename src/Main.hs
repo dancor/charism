@@ -29,15 +29,13 @@ main = do
     "usage: ./charism [options]"
   when (not $ null args) $ print "lol"
   print "loading lexicon"
-  h <- openFile lexFN ReadMode
-  c <- B.hGetContents h
+  ls <- B.lines <$> (B.hGetContents =<< openFile lexFN ReadMode)
   let
-    ls = B.lines c
     lenReq l = l >= Opt.minWordLen opts && l <= Opt.maxWordLen opts
     killR = filter (/= '\r')  -- TODO better here (BS func ya?)
-    lex = T.fromList . map (flip (,) ()) . filter (lenReq . length) .
-      map (killR . B.unpack) $ ls
+    lex = T.fromList . map (flip (,) ()) . filter (lenReq . length) $
+      map (killR . B.unpack) ls
   lex `seq` print "loaded lexicon"
-  g <- getStdGen
-  askWds g lex (Opt.maxWordLen opts) (Opt.wordOrder opts)
+  hSetBuffering stdin NoBuffering
+  askWds lex (Opt.maxWordLen opts) (Opt.wordOrder opts)
 

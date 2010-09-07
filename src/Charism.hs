@@ -6,6 +6,8 @@ import Control.Monad
 import Control.Monad.Random
 import Data.Char
 import Data.Maybe
+import Data.Monoid
+import Data.Ord
 import FUtil
 import System.Console.GetOpt
 import System.IO
@@ -21,23 +23,35 @@ import qualified Opt
 
 type Lex = T.Trie Char ()
 
-askWds :: StdGen -> Lex -> Int -> WordOrder -> IO ()
-askWds g lex wdLen wdOrd = do
-  let
-    (g', g'') = split g
-    wd = head . fst $ runRand (ltrWds lex wdLen) g'
+-- pull tiles out of bag that happen to make words
+genRack :: (RandomGen g) => Lex -> Int -> Rand g String
+genRack lex wdLen = do
+  wd <- take wdLen <$> shuffle ltrs
+  case allFullWds lex wd of
+    [] -> genRack lex wdLen
+    _ -> return wd
+
+getRandomInts :: (RandomGen g) => Rand g [Int]
+getRandomInts = getRandoms
+
+genWds :: (RandomGen g) => Lex -> WordOrder -> String -> Rand g [String]
+genWds lex wdOrd wd = case wdOrd of
+  Alph -> return $ L.sortBy (comparing length `mappend` compare) wds
+  Rand -> do
     -- random letter ordering to pseudoalphabetize answers
-    ltrOrd = M.fromList . map swap . enumerate .
-      -- why need reverse? (find that bug instead of doing this fix)
-      (if wdOrd == Alph
-        then L.reverse . L.sort
-        else (\ l -> fst $ runRand (shuffle l) g')) $ L.nub wd
-    wds = L.sortBy (funOrd ltrOrd) $ filter ((> 2) . length) $ allWds lex wd
-  hSetBuffering stdin NoBuffering
+    charToRand <- M.fromList . zip (L.nub wd) <$> getRandomInts
+    return $ L.sortBy (comparing length `mappend`
+      comparing (map $ fromJust . flip M.lookup charToRand)) wds
+  where wds = allWds lex wd
+
+askWds :: Lex -> Int -> WordOrder -> IO ()
+askWds lex wdLen wdOrd = do
+  wd <- evalRandIO $ genRack lex wdLen
+  wds <- evalRandIO $ genWds lex wdOrd wd
   putStr "\027[2J"
   hFlush stdout
   askWd wd wd wds [] "" Nothing True
-  askWds g'' lex wdLen wdOrd
+  askWds lex wdLen wdOrd
 
 lexFN :: String
 lexFN = "/usr/share/dict/scrabble"
@@ -55,16 +69,6 @@ enumerate = zip [0..]
 ltrs :: String
 ltrs = concat . map (\ (i, c) -> replicate c . chr $ i + ord 'A') $
   enumerate ltrCnts
-
--- pull tiles out of bag that happen to make words
-ltrWds :: Lex -> Int -> Rand StdGen [String]
-ltrWds lex wdLen = do
-  -- TODO more concise?
-  wd <- take wdLen <$> shuffle ltrs
-  (case allFullWds lex wd of
-    [] -> id
-    _ -> (wd:)
-    ) <$> ltrWds lex wdLen
 
 splitOut :: [x] -> Int -> (x, [x])
 splitOut xs i = (head p2, p1 ++ tail p2) where (p1, p2) = splitAt i xs
@@ -100,7 +104,7 @@ allFullWds (T.Trie _ rem)  cs = r
       ) $ splitOuts cs
 
 mapMap :: Ord k => M.Map k v -> [k] -> [v]
-mapMap m = map (\k -> fromJust $ M.lookup k m)
+mapMap m = map (\ k -> fromJust $ M.lookup k m)
 
 funOrd :: M.Map Char Int -> String -> String -> Ordering
 funOrd mapOrd a b = if aN > bN then GT else if aN < bN then LT else
