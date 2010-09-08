@@ -1,24 +1,16 @@
 <html>
 <head>
+<meta http-equiv="X-UA-Compatible" content="chrome=1">
 <title>charism</title>
 <style>
 body {
   margin: 0px 0px 0px 0px;
-  /*overflow-x: hidden;
-  overflow-y: hidden;*/
+  /* not technically needed, but helps alleviate chrome zoom bugs.. */
+  overflow-x: hidden;
+  overflow-y: hidden;
 }
 </style>
 <script type="text/javascript">
-function onload_arr(a, f) {
-  onload_arr_i(a, f, 0);
-}
-function onload_arr_i(a, f, i) {
-  if (i >= a.length) {
-    f();
-    return;
-  }
-  a[i].onload = function() {onload_arr_i(a, f, i + 1);}
-}
 function last(a) {
   return a[a.length - 1];
 }
@@ -48,7 +40,17 @@ function putInFirstEmpty(a, c) {
   }
   throw('something went wrong in putInFirstEmpty');
 }
+function get_param(name) {
+  name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
+  var regex = new RegExp("[\\?&]"+name+"=([^&#]*)");
+  var results = regex.exec(window.location.href);
+  if (results == null) {
+    return "";
+  }
+  return results[1];
+}
 window.onload = function() {
+  var tooltip = document.getElementById("tooltip");
   var canv = document.getElementById("canv");
   var g = canv.getContext("2d");
   var winW = 0;
@@ -56,8 +58,10 @@ window.onload = function() {
   var bag = "";
   var rack = "@@@@@@@";
   var wds = [];
-  var wdGot = [];
+  var wdsGot = [];
+  var wdsDef = [];
   var showSwap = false;
+  var colWidths = [];
 
   var ltr = [];
   for (var i = 0; i <= 26; i++) {
@@ -66,6 +70,30 @@ window.onload = function() {
   }
   var helpImg = new Image();
   helpImg.src = 'img/help.png';
+
+  var bagX = 8;
+  var bagY = 8;
+  var bagInterSpaceX = 8;
+  var bagInterSpaceY = 8;
+  var bagLtrW = 64;
+  var bagLtrH = 64;
+
+  var rackX = bagX;
+  var rackY = bagY + bagLtrH + bagInterSpaceY;
+  var rackInterSpaceX = 8;
+  var rackInterSpaceY = 8;
+  var rackLtrW = 64;
+  var rackLtrH = 64;
+
+  var wdsX = rackX;
+  var wdsY = rackY + rackLtrH + rackInterSpaceY;
+  var wdsInterSpaceX = 4;
+  var wdsInterSpaceY = 4;
+  var wdsColInterSpaceX = 16;
+  var wdsLtrW = 32;
+  var wdsLtrH = 32;
+
+  var wdsRowNum = 0;
 
   function drawLtrs(ltrs, x, y, ltrW, ltrH, interSpace) {
     for (var i = 0; i < ltrs.length; i++) {
@@ -78,35 +106,46 @@ window.onload = function() {
     winH = window.innerHeight;
     canv.width = winW;
     canv.height = winH;
-    g.fillStyle = "#070";
+    var bgCol = get_param("bg");
+    if (!bgCol) {
+      bgCol = "227";
+    }
+    g.fillStyle = "#" + bgCol;
     g.fillRect(0, 0, winW, winH);
 
-    var bagX = 8;
-    var bagY = 8;
-    var bagInterSpaceX = 8;
-    var bagInterSpaceY = 8;
-    var bagLtrW = 64;
-    var bagLtrH = 64;
     drawLtrs(bag, bagX, bagY, bagLtrW, bagLtrH, bagInterSpaceX);
 
-    var rackX = bagX;
-    var rackY = bagY + bagLtrH + bagInterSpaceY;
-    var rackInterSpaceX = 8;
-    var rackInterSpaceY = 8;
-    var rackLtrW = 64;
-    var rackLtrH = 64;
     drawLtrs(rack, rackX, rackY, rackLtrW, rackLtrH, rackInterSpaceX);
 
-    var wdsX = rackX;
-    var wdsY = rackY + rackLtrH + rackInterSpaceY;
-    var wdsInterSpaceX = 4;
-    var wdsInterSpaceY = 4;
-    var wdsColInterSpaceX = 16;
-    var wdsLtrW = 32;
-    var wdsLtrH = 32;
     var x = wdsX;
     var y = wdsY;
-    var prevColW = 0;
+    while (wdsLtrW >= 10) {
+      var tooBig = false;
+      for (var i = 0; i < wds.length; i++) {
+        var wdL = wds[i].length;
+        if (x + wdL * (wdsLtrW + wdsInterSpaceX) - wdsInterSpaceX + 8 >= 
+            winW) {
+          tooBig = true;
+          break;
+        }
+        y += wdsInterSpaceY + wdsLtrH;
+        if (y + wdsInterSpaceY + wdsLtrH > winH) {
+          x += wdL * (wdsLtrW + wdsInterSpaceX) - wdsInterSpaceX +
+            wdsColInterSpaceX;
+          y = wdsY;
+        }
+      }
+      x = wdsX;
+      y = wdsY;
+      if (tooBig) {
+        wdsLtrW--;
+        wdsLtrH--;
+        continue;
+      }
+      break;
+    }
+    colWidths = [];
+    wdsRowNum = 0;
     for (var i = 0; i < wds.length; i++) {
       var curWd;
       if (wdsGot[i] ^ showSwap) {
@@ -121,11 +160,14 @@ window.onload = function() {
         wdsLtrW, wdsLtrH, wdsInterSpaceX);
       y += wdsInterSpaceY + wdsLtrH;
       if (y + wdsInterSpaceY + wdsLtrH > winH) {
-        x += (wds[i].length - 1) * (wdsLtrW + wdsInterSpaceX) + wdsLtrW + 
-          wdsColInterSpaceX;
+        var wdW = curWd.length * (wdsLtrW + wdsInterSpaceX) - wdsInterSpaceX;
+        colWidths = colWidths.concat([wdW]);
+        if (wdsRowNum == 0) {
+          wdsRowNum = i + 1;
+        }
+        x += wdW + wdsColInterSpaceX;
         y = wdsY;
       }
-
     }
       
     g.drawImage(helpImg, winW - helpImg.width, 0);
@@ -155,7 +197,7 @@ window.onload = function() {
           break;
         }
       }
-    } else if (i == 8) {
+    } else if (i == 8 || i == 92) {
       for (var i = rack.length - 1; i >= 0; i--) {
         if (rack[i] != '@') {
           bag = putInFirstEmpty(bag, rack[i]);
@@ -191,12 +233,15 @@ window.onload = function() {
     } else {
       //console.log(i);
     }
+    return false;
   }
   function get_round() {
     r = new XMLHttpRequest();
     r.onreadystatechange = function() {
       if (r.readyState == 4) {
-        wds = JSON.parse(r.responseText);
+        var wdsAndDefs = JSON.parse(r.responseText);
+        wds = wdsAndDefs[0];
+        wdsDef = wdsAndDefs[1];
         wdsGot = [];
         for (var i = 0; i < wds.length; i++) {
           wdsGot[i] = false;
@@ -208,27 +253,118 @@ window.onload = function() {
     r.open("GET", "ajax/get_round", true);
     r.send();
   }
-  function click(e) {
-    if (e.x >= winW - helpImg.width && e.y <= helpImg.height) {
-      alert("Use the keyboard to make words:\n" +
-"- Type letters to move letters to your working rack.\n" + 
-"- Press backspace to move one letter off your working rack.\n" +
-"- Press enter when you have made a word.\n" + 
-"- Press spacebar to shuffle the letters on the source rack.\n" +
-"- Pless ? to show words you haven't gotten.\n" +
-"- Reload the page (ctrl+r) to play another round.");
+  function show_tooltip(x, y, content) {
+    tooltip.style.left = 0;
+    tooltip.style.top = 0;
+    tooltip.innerHTML = content;
+    if (x < tooltip.offsetWidth) {
+      tooltip.style.left = x;
+    } else {
+      tooltip.style.left = x - tooltip.offsetWidth;
+      /*
+      if (winW > x + tooltip.offsetWidth) {
+        tooltip.style.width = winW - x;
+      }
+      */
     }
+    if (y < tooltip.offsetHeight) {
+      tooltip.style.top = y;
+    } else {
+      tooltip.style.top = y - tooltip.offsetHeight;
+    }
+    tooltip.style.visibility = "visible";
+  }
+  function mousemove(e) {
+    var x = e.clientX;
+    var y = e.clientY;
+    if (x >= winW - helpImg.width && y <= helpImg.height) {
+      show_tooltip(x, y, "<b>Use the keyboard to make words:<br>" +
+"- Type letters to move letters to your working rack.<br>" + 
+"- Press backspace or \\ to move one letter off your working rack.<br>" +
+"- Press escape to move all letters off your working rack.<br>" +
+"- Press enter when you have made a word.<br>" + 
+"- Press spacebar to shuffle the letters on the source rack.<br>" +
+"- Pless ? to show words you haven't gotten.<br>" +
+"- Hover over words to see definitions.<br>" +
+"- Reload the page (ctrl+r) to play another round.</b>");
+      return;
+    }
+    if (y >= wdsY && 
+        y < wdsY + wdsRowNum * (wdsLtrH + wdsInterSpaceY) - wdsInterSpaceY &&
+        (y - wdsY) % (wdsLtrH + wdsInterSpaceY) < wdsLtrH) {
+      var yIndex = Math.floor((y - wdsY) / (wdsLtrH + wdsInterSpaceY));
+      var colStartX = rackX;
+      var colEndX;
+      var xIndex = -1;
+      var xOffset;
+      for (var i = 0; i < colWidths.length; i++) {
+        colEndX = colStartX + colWidths[i];
+        if (x < colStartX) {
+          break;
+        }
+        if (x >= colStartX && x < colEndX) {
+          xIndex = i;
+          xOffset = x - colStartX;
+          break;
+        }
+        colStartX = colEndX + wdsColInterSpaceX;
+      }
+      if (x >= colStartX) {
+        xIndex = i;
+        xOffset = x - colStartX;
+      }
+      if (xIndex >= 0) {
+        var wdI = wdsRowNum * xIndex + yIndex;
+        if (wdI < wds.length && wdsGot[wdI] ^ showSwap && xOffset < 
+            wds[wdI].length * (wdsLtrW + wdsInterSpaceX) - wdsInterSpaceX) {
+          show_tooltip(x, y, "<b>" + wdsDef[wdI] + "</b>");
+          return;
+        }
+      }
+    }
+    tooltip.style.visibility = "hidden";
   }
   
   window.onresize = resize;
-  window.addEventListener("keydown", keydown);
-  window.addEventListener("click", click);
-  var allImgs = [].concat(ltr, [helpImg]);
-  onload_arr(allImgs, get_round);
+  window.addEventListener("keydown", keydown, true);
+  window.addEventListener("mousemove", mousemove, true);
+  get_round();
 }
 </script>
 </head>
 <body>
 <canvas id="canv"></canvas>
+<div style="visibility:hidden;position:absolute;left:0px;top:0px;">
+<img width=0 height=0 src="img/help.png" />
+<img width=0 height=0 src="img/@.png" />
+<img width=0 height=0 src="img/A.png" />
+<img width=0 height=0 src="img/B.png" />
+<img width=0 height=0 src="img/C.png" />
+<img width=0 height=0 src="img/D.png" />
+<img width=0 height=0 src="img/E.png" />
+<img width=0 height=0 src="img/F.png" />
+<img width=0 height=0 src="img/G.png" />
+<img width=0 height=0 src="img/H.png" />
+<img width=0 height=0 src="img/I.png" />
+<img width=0 height=0 src="img/J.png" />
+<img width=0 height=0 src="img/K.png" />
+<img width=0 height=0 src="img/L.png" />
+<img width=0 height=0 src="img/M.png" />
+<img width=0 height=0 src="img/N.png" />
+<img width=0 height=0 src="img/O.png" />
+<img width=0 height=0 src="img/P.png" />
+<img width=0 height=0 src="img/Q.png" />
+<img width=0 height=0 src="img/R.png" />
+<img width=0 height=0 src="img/S.png" />
+<img width=0 height=0 src="img/T.png" />
+<img width=0 height=0 src="img/U.png" />
+<img width=0 height=0 src="img/V.png" />
+<img width=0 height=0 src="img/W.png" />
+<img width=0 height=0 src="img/X.png" />
+<img width=0 height=0 src="img/Y.png" />
+<img width=0 height=0 src="img/Z.png" />
+</div>
+<div id="tooltip" style="visibility:hidden;position:absolute;left:0px;top:0px;opacity:0.9;background:yellow;border-style:outset;border-color:orange;word-wrap:break-word;max-width:40em;">
+</div>
 </body>
 </html>

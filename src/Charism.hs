@@ -21,10 +21,10 @@ import WordOrder
 import qualified Data.Trie as T
 import qualified Opt
 
-type Lex = T.Trie Char ()
+type Lex a = T.Trie Char a
 
 -- pull tiles out of bag that happen to make words
-genRack :: (RandomGen g) => Lex -> Int -> Rand g String
+genRack :: (RandomGen g) => Lex a -> Int -> Rand g String
 genRack lex wdLen = do
   wd <- take wdLen <$> shuffle ltrs
   case allFullWds lex wd of
@@ -34,7 +34,7 @@ genRack lex wdLen = do
 getRandomInts :: (RandomGen g) => Rand g [Int]
 getRandomInts = getRandoms
 
-genWds :: (RandomGen g) => Lex -> WordOrder -> String -> Rand g [String]
+genWds :: (RandomGen g) => Lex a -> WordOrder -> String -> Rand g [String]
 genWds lex wdOrd wd = case wdOrd of
   Alph -> return $ L.sortBy (comparing length `mappend` compare) wds
   Rand -> do
@@ -44,7 +44,7 @@ genWds lex wdOrd wd = case wdOrd of
       comparing (map $ fromJust . flip M.lookup charToRand)) wds
   where wds = allWds lex wd
 
-askWds :: Lex -> Int -> WordOrder -> IO ()
+askWds :: Lex a -> Int -> WordOrder -> IO ()
 askWds lex wdLen wdOrd = do
   wd <- evalRandIO $ genRack lex wdLen
   wds <- evalRandIO $ genWds lex wdOrd wd
@@ -55,6 +55,12 @@ askWds lex wdLen wdOrd = do
 
 lexFN :: String
 lexFN = "/usr/share/dict/scrabble"
+
+lexFNWithDefs :: String
+lexFNWithDefs = "/usr/share/dict/scrabble.defs"
+
+lexFNWithRecDefs :: String
+lexFNWithRecDefs = "/usr/share/dict/scrabble.rec-defs"
 
 ltrCnts :: [Int]
 ltrCnts = [
@@ -76,7 +82,7 @@ splitOut xs i = (head p2, p1 ++ tail p2) where (p1, p2) = splitAt i xs
 splitOuts :: [x] -> [(x, [x])]
 splitOuts xs = map (splitOut xs) $ take (length xs) [0..]
 
-allWds :: Lex -> [Char] -> [String]
+allWds :: Lex a -> [Char] -> [String]
 allWds (T.Trie (Just _) _) [] = [""]
 allWds (T.Trie Nothing _)  [] = []
 allWds (T.Trie wdMby rem)  cs = case wdMby of
@@ -91,7 +97,7 @@ allWds (T.Trie wdMby rem)  cs = case wdMby of
       ) $ splitOuts cs
 
 -- or just filter allWds but might be slower (eh prob'd be fine); check later?
-allFullWds :: Lex -> [Char] -> [String]
+allFullWds :: Lex a -> [Char] -> [String]
 allFullWds (T.Trie (Just _) _) [] = [""]
 allFullWds (T.Trie Nothing _)  [] = []
 allFullWds (T.Trie _ rem)  cs = r
