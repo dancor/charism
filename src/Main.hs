@@ -29,6 +29,8 @@ main = do
     "usage: ./charism [options]"
   when (not $ null args) $ print "lol"
   print "loading lexicon"
+  print "todo"
+  {-
   ls <- B.lines <$> (B.hGetContents =<< openFile lexFN ReadMode)
   let
     lenReq l = l >= Opt.minWordLen opts && l <= Opt.maxWordLen opts
@@ -38,4 +40,4 @@ main = do
   lex `seq` print "loaded lexicon"
   hSetBuffering stdin NoBuffering
   askWds lex (Opt.maxWordLen opts) (Opt.wordOrder opts)
-
+  -}

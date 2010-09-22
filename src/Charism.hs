@@ -24,8 +24,8 @@ import qualified Opt
 type Lex a = T.Trie Char a
 
 -- pull tiles out of bag that happen to make words
-genRack :: (RandomGen g) => Lex a -> Int -> Rand g String
-genRack lex wdLen = do
+genRack :: (RandomGen g) => Lex a -> String -> Int -> Rand g String
+genRack lex ltrs wdLen = do
   wd <- take wdLen <$> shuffle ltrs
   case allFullWds lex wd of
     [] -> genRack lex wdLen
@@ -44,6 +44,7 @@ genWds lex wdOrd wd = case wdOrd of
       comparing (map $ fromJust . flip M.lookup charToRand)) wds
   where wds = allWds lex wd
 
+{-
 askWds :: Lex a -> Int -> WordOrder -> IO ()
 askWds lex wdLen wdOrd = do
   wd <- evalRandIO $ genRack lex wdLen
@@ -52,29 +53,7 @@ askWds lex wdLen wdOrd = do
   hFlush stdout
   askWd wd wd wds [] "" Nothing True
   askWds lex wdLen wdOrd
-
-lexFN :: String
-lexFN = "/usr/share/dict/scrabble"
-
-lexFNWithDefs :: String
-lexFNWithDefs = "/usr/share/dict/scrabble.defs"
-
-lexFNWithRecDefs :: String
-lexFNWithRecDefs = "/usr/share/dict/scrabble.rec-defs"
-
-ltrCnts :: [Int]
-ltrCnts = [
-  9, 2, 2, 4, 14, 2,  -- A - F
-  3, 2, 9, 1, 1, 4, 2,  -- G - M
-  6, 8, 2, 1, 6, 8{-4-},  -- N - S   -- double s's since ppl tend to hold them
-  6, 4, 2, 2, 1, 2, 1]  -- T - Z
-
-enumerate :: [a] -> [(Int, a)]
-enumerate = zip [0..]
-
-ltrs :: String
-ltrs = concat . map (\ (i, c) -> replicate c . chr $ i + ord 'A') $
-  enumerate ltrCnts
+  -}
 
 splitOut :: [x] -> Int -> (x, [x])
 splitOut xs i = (head p2, p1 ++ tail p2) where (p1, p2) = splitAt i xs
