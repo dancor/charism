@@ -28,7 +28,7 @@ genRack :: (RandomGen g) => Lex a -> String -> Int -> Rand g String
 genRack lex ltrs wdLen = do
   wd <- take wdLen <$> shuffle ltrs
   case allFullWds lex wd of
-    [] -> genRack lex wdLen
+    [] -> genRack lex ltrs wdLen
     _ -> return wd
 
 getRandomInts :: (RandomGen g) => Rand g [Int]
