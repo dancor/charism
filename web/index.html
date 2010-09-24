@@ -257,23 +257,45 @@ window.onload = function() {
         }
       }
     }
+    function keypress(e) {
+      var i = e.keyCode;
+      var c;
+      if (i == ordA) {
+        c = '\u00C4';
+      } else if (i == ordO) {
+        c = '\u00D6';
+      } else if (i == ordU) {
+        c = '\u00DC';
+      } else if (i == ordN) {
+        c = '\u00D1';
+      } else if (i == ordC) {
+        c = '1';
+      } else if (i == ordR) {
+        c = '2';
+      } else if (i == ordL) {
+        c = '3';
+      } else if (i >= 97 && i <= 122) {
+        c = chr(i - 32);
+      } else {
+        return;
+      }
+      for (var j = 0; j < ltrNum; j++) {
+        console.log(c);
+        if (bag[j].c == c) {
+          for (var k = 0; k <= ltrNum; k++) {
+            if (rack[k].c == '@') {
+              ltrSetC(rack[k], c);
+              break;
+            }
+          }
+          ltrSetC(bag[j], '@');
+          break;
+        }
+      }
+    }
     function keydown(e) {
       var i = e.keyCode % 128;
-      if (i >= 65 && i <= 90) {
-        var c = chr(i);
-        for (var j = 0; j < ltrNum; j++) {
-          if (bag[j].c == c) {
-            for (var k = 0; k <= ltrNum; k++) {
-              if (rack[k].c == '@') {
-                ltrSetC(rack[k], c);
-                break;
-              }
-            }
-            ltrSetC(bag[j], '@');
-            break;
-          }
-        }
-      } else if (i == 8 || i == 92) {
+      if (i == 8 || i == 92) {
         for (var i = ltrNum - 1; i >= 0; i--) {
           if (rack[i].c != '@') {
             putInFirstEmpty(bag, rack[i].c);
@@ -310,6 +332,7 @@ window.onload = function() {
       return false;
     }
     window.addEventListener("resize", resize, true);
+    window.addEventListener("keypress", keypress, true);
     window.addEventListener("keydown", keydown, true);
     tooltipify(helpBox, "<b>Use the keyboard to make words:<br>" +
 "- Type letters to move letters to your working rack.<br>" + 
