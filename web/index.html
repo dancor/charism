@@ -152,8 +152,8 @@ window.onload = function() {
     replicate(ltrNum, "@"));
   var lang = "en";
   var langParam = getParam("lang");
-  if (langParam == "de") {
-    lang = "de";
+  if (langParam == "de" || langParam == "es") {
+    lang = langParam;
   }
   function showTooltip(x, y, content) {
     tooltip.style.left = 0;
@@ -327,8 +327,7 @@ window.onload = function() {
 </head>
 <body>
 <img id="help" src="img/help.png" align="right" />
-<!-- todo: tooltip on top -->
-<div id="tooltip" style="visibility:hidden;position:absolute;left:0px;top:0px;opacity:0.9;background:yellow;border-style:outset;border-color:orange;word-wrap:break-word;max-width:40em;">
+<div id="tooltip" style="visibility:hidden;position:absolute;left:0px;top:0px;opacity:0.9;background:yellow;border-style:outset;border-color:orange;word-wrap:break-word;max-width:40em;z-index:1;">
 </div>
 </body>
 </html>

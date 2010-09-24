@@ -1,4 +1,5 @@
 #!/bin/sh
 set -e
 ghc -threaded -isrc --make -o get_round src/AjaxGetRound.hs -odir obj -hidir obj
+sudo mkdir -p /var/www/g/charism/ajax
 sudo mv get_round /var/www/g/charism/ajax
