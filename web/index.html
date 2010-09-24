@@ -1,15 +1,14 @@
 <html>
 <head>
-<meta http-equiv="X-UA-Compatible" content="chrome=1">
 <title>charism</title>
 <style>
 body {
-  margin: 0px 0px 0px 0px;
-  /* not technically needed, but helps alleviate chrome zoom bugs.. */
-  overflow-x: hidden;
-  overflow-y: hidden;
+  background: #227;
 }
 </style>
+<script type="text/javascript"
+ src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js">
+</script>
 <script type="text/javascript">
 function last(a) {
   return a[a.length - 1];
@@ -20,57 +19,109 @@ function ord(c) {
 function chr(i) {
   return String.fromCharCode(i);
 }
+function strToArr(s) {
+  var r = [];
+  for (var i = 0; i < s.length; i++) {
+    r[i] = s[i];
+  }
+  return r;
+}
+function arrToStr(a) {
+  return [].concat(a);
+}
 function shuffle(a) {
   for (var i = a.length - 1; i >= 0; i--) {
     var j = Math.floor(Math.random() * (i + 1));
     var tmp = a[j];
-    a = setCharAt(a, j, a[i]);
-    a = setCharAt(a, i, tmp);
+    a[j] = a[i];
+    a[i] = tmp;
   }
   return a;
 }
-function setCharAt(s, i, c) {
-  return s.substring(0, i) + c + s.substring(i + 1);
-}
 function putInFirstEmpty(a, c) {
   for (var i = 0; i < a.length; i++) {
-    if (a[i] == '@') {
-      return setCharAt(a, i, c);
+    if (a[i].c == '@') {
+      ltrSetC(a[i], c);
+      return;
     }
   }
   throw('something went wrong in putInFirstEmpty');
 }
-function get_param(name) {
-  name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
-  var regex = new RegExp("[\\?&]"+name+"=([^&#]*)");
+function getParam(name) {
+  // fixme: make this do decoding?
+  name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+  var regexS = "[\\?&]" + name + "=([^&#]*)";
+  var regex = new RegExp(regexS);
   var results = regex.exec(window.location.href);
   if (results == null) {
-    return "";
+    return null;
+  } else {
+    return results[1];
   }
-  return results[1];
+}
+function createLtr(x, y, ltrW, ltrH, c) {
+  var img = document.createElement("img");
+  img.src = "img/" + c + ".png";
+  img.width = ltrW;
+  img.height = ltrH;
+  img.style.position = "absolute";
+  img.style.left = x;
+  img.style.top = y;
+  document.body.appendChild(img);
+  return {c: c, img: img};
+}
+function createLtrs(x, y, ltrW, ltrH, interSpaceW, cs, tooltip) {
+  var r = [];
+  for (var i = 0; i < cs.length; i++) {
+    r[i] = createLtr(x + i * (ltrW + interSpaceW), y, ltrW, ltrH, cs[i]);
+  }
+  return r;
+}
+function ajaj(path, f) {
+  r = new XMLHttpRequest();
+  r.onreadystatechange = function() {
+    if (r.readyState == 4) {
+      f(JSON.parse(r.responseText));
+    }
+  }
+  r.open("GET", "ajax/" + path, true);
+  r.send();
+}
+function replicate(n, v) {
+  var r = [];
+  for (var i = 0; i < n; i++) {
+    r[i] = v;
+  }
+  return r;
+}
+function ltrSetC(ltr, c) {
+  ltr.c = c;
+  ltr.img.src = "img/" + c + ".png";
+}
+function updateLtr(ltr, x, y, w, h, c) {
+  ltr.img.width = w;
+  ltr.img.height = w;
+  ltr.img.style.left = x;
+  ltr.img.style.top = y;
+  ltrSetC(ltr, c);
+}
+function updateLtrs(ltrs, x, y, ltrW, ltrH, interSpaceW, cs) {
+  for (var i = 0; i < ltrs.length; i++) {
+    updateLtr(ltrs[i], x + i * (ltrW + interSpaceW), y, ltrW, ltrH, cs[i]);
+  }
+}
+function ltrsToCs(ltrs) {
+  var r = [];
+  for (var i = 0; i < ltrs.length; i++) {
+    r[i] = ltrs[i].c;
+  }
+  return r;
 }
 window.onload = function() {
   var tooltip = document.getElementById("tooltip");
-  var canv = document.getElementById("canv");
-  var g = canv.getContext("2d");
-  var winW = 0;
-  var winH = 0;
-  var bag = "";
-  var rack = "@@@@@@@";
-  var wds = [];
-  var wdsGot = [];
-  var wdsDef = [];
-  var showSwap = false;
-  var colWidths = [];
+  var helpBox = document.getElementById("help");
 
-  var ltr = [];
-  for (var i = 0; i <= 26; i++) {
-    ltr[i] = new Image();
-    ltr[i].src = 'img/' + chr(ord('@') + i) + '.png';
-  }
-  var helpImg = new Image();
-  helpImg.src = 'img/help.png';
-
+  var ltrNum = 7;
   var bagX = 8;
   var bagY = 8;
   var bagInterSpaceX = 8;
@@ -95,165 +146,16 @@ window.onload = function() {
 
   var wdsRowNum = 0;
 
-  function drawLtrs(ltrs, x, y, ltrW, ltrH, interSpace) {
-    for (var i = 0; i < ltrs.length; i++) {
-      g.drawImage(ltr[ord(ltrs[i]) - ord('@')], x + i * (interSpace + ltrW), y, 
-        ltrW, ltrH);
-    }
-  }
-  function resize() {
-    winW = window.innerWidth;
-    winH = window.innerHeight;
-    canv.width = winW;
-    canv.height = winH;
-    var bgCol = get_param("bg");
-    if (!bgCol) {
-      bgCol = "227";
-    }
-    g.fillStyle = "#" + bgCol;
-    g.fillRect(0, 0, winW, winH);
+  var showSwap = false;
 
-    drawLtrs(bag, bagX, bagY, bagLtrW, bagLtrH, bagInterSpaceX);
-
-    drawLtrs(rack, rackX, rackY, rackLtrW, rackLtrH, rackInterSpaceX);
-
-    var x = wdsX;
-    var y = wdsY;
-    while (wdsLtrW >= 10) {
-      var tooBig = false;
-      for (var i = 0; i < wds.length; i++) {
-        var wdL = wds[i].length;
-        if (x + wdL * (wdsLtrW + wdsInterSpaceX) - wdsInterSpaceX + 8 >= 
-            winW) {
-          tooBig = true;
-          break;
-        }
-        y += wdsInterSpaceY + wdsLtrH;
-        if (y + wdsInterSpaceY + wdsLtrH > winH) {
-          x += wdL * (wdsLtrW + wdsInterSpaceX) - wdsInterSpaceX +
-            wdsColInterSpaceX;
-          y = wdsY;
-        }
-      }
-      x = wdsX;
-      y = wdsY;
-      if (tooBig) {
-        wdsLtrW--;
-        wdsLtrH--;
-        continue;
-      }
-      break;
-    }
-    colWidths = [];
-    wdsRowNum = 0;
-    for (var i = 0; i < wds.length; i++) {
-      var curWd;
-      if (wdsGot[i] ^ showSwap) {
-        curWd = wds[i];
-      } else {
-        curWd = '';
-        for (var j = 0; j < wds[i].length; j++) {
-          curWd += '@';
-        }
-      }
-      drawLtrs(curWd, x, y,
-        wdsLtrW, wdsLtrH, wdsInterSpaceX);
-      y += wdsInterSpaceY + wdsLtrH;
-      if (y + wdsInterSpaceY + wdsLtrH > winH) {
-        var wdW = curWd.length * (wdsLtrW + wdsInterSpaceX) - wdsInterSpaceX;
-        colWidths = colWidths.concat([wdW]);
-        if (wdsRowNum == 0) {
-          wdsRowNum = i + 1;
-        }
-        x += wdW + wdsColInterSpaceX;
-        y = wdsY;
-      }
-    }
-      
-    g.drawImage(helpImg, winW - helpImg.width, 0);
+  var rack = createLtrs(rackX, rackY, rackLtrW, rackLtrH, rackInterSpaceX,
+    replicate(ltrNum, "@"));
+  var lang = "en";
+  var langParam = getParam("lang");
+  if (langParam == "de") {
+    lang = "de";
   }
-  function rackToBag() {
-    for (var i = 0; i < rack.length; i++) {
-      if (rack[i] != '@') {
-        bag = putInFirstEmpty(bag, rack[i]);
-        rack = setCharAt(rack, i, '@');
-      }
-    }
-  }
-  function keydown(e) {
-    var i = e.keyCode % 128;
-    if (i >= 65 && i <= 90) {
-      var c = chr(i);
-      for (var j = 0; j <= bag.length; j++) {
-        if (bag[j] == c) {
-          for (var k = 0; k <= rack.length; k++) {
-            if (rack[k] == '@') {
-              rack = setCharAt(rack, k, c);
-              break;
-            }
-          }
-          bag = setCharAt(bag, j, '@');
-          resize();
-          break;
-        }
-      }
-    } else if (i == 8 || i == 92) {
-      for (var i = rack.length - 1; i >= 0; i--) {
-        if (rack[i] != '@') {
-          bag = putInFirstEmpty(bag, rack[i]);
-          rack = setCharAt(rack, i, '@');
-          resize();
-          break;
-        }
-      }
-    } else if (i == 32) {
-      bag = shuffle(bag);
-      resize();
-    } else if (i == 13) {
-      var rackWd = '';
-      for (var i = 0; i < rack.length; i++) {
-        if (rack[i] != '@') {
-          rackWd += rack[i];
-        }
-      }
-      for (var i = 0; i < wds.length; i++) {
-        if (wds[i] == rackWd) {
-          wdsGot[i] = true;
-          rackToBag();
-          resize();
-          break;
-        }
-      }
-    } else if (i == 27) {
-      rackToBag();
-      resize();
-    } else if (i == 63) {
-      showSwap = !showSwap;
-      resize();
-    } else {
-      //console.log(i);
-    }
-    return false;
-  }
-  function get_round() {
-    r = new XMLHttpRequest();
-    r.onreadystatechange = function() {
-      if (r.readyState == 4) {
-        var wdsAndDefs = JSON.parse(r.responseText);
-        wds = wdsAndDefs[0];
-        wdsDef = wdsAndDefs[1];
-        wdsGot = [];
-        for (var i = 0; i < wds.length; i++) {
-          wdsGot[i] = false;
-        }
-        bag = shuffle(last(wds));
-        resize();
-      }
-    }
-    r.open("GET", "ajax/get_round", true);
-    r.send();
-  }
-  function show_tooltip(x, y, content) {
+  function showTooltip(x, y, content) {
     tooltip.style.left = 0;
     tooltip.style.top = 0;
     tooltip.innerHTML = content;
@@ -261,11 +163,6 @@ window.onload = function() {
       tooltip.style.left = x;
     } else {
       tooltip.style.left = x - tooltip.offsetWidth;
-      /*
-      if (winW > x + tooltip.offsetWidth) {
-        tooltip.style.width = winW - x;
-      }
-      */
     }
     if (y < tooltip.offsetHeight) {
       tooltip.style.top = y;
@@ -274,11 +171,147 @@ window.onload = function() {
     }
     tooltip.style.visibility = "visible";
   }
-  function mousemove(e) {
-    var x = e.clientX;
-    var y = e.clientY;
-    if (x >= winW - helpImg.width && y <= helpImg.height) {
-      show_tooltip(x, y, "<b>Use the keyboard to make words:<br>" +
+  function tooltipify(a, content) {
+    a.addEventListener("mouseover", function(e) {
+      showTooltip(e.clientX, e.clientY, content);}, true);
+    a.addEventListener("mouseout", function(e) {
+      tooltip.style.visibility = "hidden";}, true);
+  }
+  ajaj("get_round?lang=" + lang, function(resp) {
+    var wdsRaw = resp[0];
+    var bag = createLtrs(bagX, bagY, bagLtrW, bagLtrH, bagInterSpaceX,
+      shuffle(strToArr(last(wdsRaw))));
+    var wds = [];
+    for (var i = 0; i < wdsRaw.length; i++) {
+      var def = resp[1][i];
+      wds[i] = {
+        ltrs: createLtrs(wdsX, wdsY + i * (wdsLtrH + wdsInterSpaceY), 
+          wdsLtrW, wdsLtrH, wdsInterSpaceX, wdsRaw[i]),
+        wd: wdsRaw[i],
+        got: false,
+        def: def
+        };
+      for (var j = 0; j < wdsRaw[i].length; j++) {
+        tooltipify(wds[i].ltrs[j].img, "<b>" + def + "</b>");
+      }
+    }
+    function resize() {
+      var x = wdsX;
+      var y = wdsY;
+      var wdsLtrWCur = wdsLtrW;
+      var wdsLtrHCur = wdsLtrH;
+      while (wdsLtrWCur >= 10) {
+        var tooBig = false;
+        for (var i = 0; i < wds.length; i++) {
+          var wdL = wds[i].wd.length;
+          if (x + wdL * (wdsLtrWCur + wdsInterSpaceX) - wdsInterSpaceX + 8 >= 
+              window.innerWidth) {
+            tooBig = true;
+            break;
+          }
+          y += wdsInterSpaceY + wdsLtrHCur;
+          if (y + wdsInterSpaceY + wdsLtrHCur > window.innerHeight) {
+            x += wdL * (wdsLtrWCur + wdsInterSpaceX) - wdsInterSpaceX +
+              wdsColInterSpaceX;
+            y = wdsY;
+          }
+        }
+        x = wdsX;
+        y = wdsY;
+        if (tooBig) {
+          wdsLtrWCur--;
+          wdsLtrHCur--;
+          continue;
+        }
+        break;
+      }
+      colWidths = [];
+      wdsRowNum = 0;
+      for (var i = 0; i < wds.length; i++) {
+        var curWd;
+        if (wds[i].got ^ showSwap) {
+          curWd = wds[i].wd;
+        } else {
+          curWd = replicate(wds[i].wd.length, "@");
+        }
+        updateLtrs(wds[i].ltrs, x, y, wdsLtrWCur, wdsLtrHCur, wdsInterSpaceX, 
+          curWd);
+        y += wdsInterSpaceY + wdsLtrHCur;
+        if (y + wdsInterSpaceY + wdsLtrHCur > window.innerHeight) {
+          var wdW = curWd.length * (wdsLtrWCur + wdsInterSpaceX) - 
+            wdsInterSpaceX;
+          colWidths = colWidths.concat([wdW]);
+          if (wdsRowNum == 0) {
+            wdsRowNum = i + 1;
+          }
+          x += wdW + wdsColInterSpaceX;
+          y = wdsY;
+        }
+      }
+    }
+    function rackToBag() {
+      for (var i = 0; i < rack.length; i++) {
+        if (rack[i].c != '@') {
+          putInFirstEmpty(bag, rack[i].c);
+          ltrSetC(rack[i], '@');
+        }
+      }
+    }
+    function keydown(e) {
+      var i = e.keyCode % 128;
+      if (i >= 65 && i <= 90) {
+        var c = chr(i);
+        for (var j = 0; j < ltrNum; j++) {
+          if (bag[j].c == c) {
+            for (var k = 0; k <= ltrNum; k++) {
+              if (rack[k].c == '@') {
+                ltrSetC(rack[k], c);
+                break;
+              }
+            }
+            ltrSetC(bag[j], '@');
+            break;
+          }
+        }
+      } else if (i == 8 || i == 92) {
+        for (var i = ltrNum - 1; i >= 0; i--) {
+          if (rack[i].c != '@') {
+            putInFirstEmpty(bag, rack[i].c);
+            ltrSetC(rack[i], '@');
+            break;
+          }
+        }
+      } else if (i == 32) {
+        updateLtrs(bag, bagX, bagY, bagLtrW, bagLtrH, bagInterSpaceX,
+          arrToStr(shuffle(strToArr(ltrsToCs(bag)))));
+      } else if (i == 13) {
+        var rackWd = '';
+        for (var i = 0; i < ltrNum; i++) {
+          if (rack[i].c != '@') {
+            rackWd += rack[i].c;
+          }
+        }
+        for (var i = 0; i < wds.length; i++) {
+          if (wds[i].wd == rackWd) {
+            wds[i].got = true;
+            rackToBag();
+            resize();
+            break;
+          }
+        }
+      } else if (i == 27) {
+        rackToBag();
+      } else if (i == 63) {
+        showSwap = !showSwap;
+        resize();
+      } else {
+        //console.log(i);
+      }
+      return false;
+    }
+    window.addEventListener("resize", resize, true);
+    window.addEventListener("keydown", keydown, true);
+    tooltipify(helpBox, "<b>Use the keyboard to make words:<br>" +
 "- Type letters to move letters to your working rack.<br>" + 
 "- Press backspace or \\ to move one letter off your working rack.<br>" +
 "- Press escape to move all letters off your working rack.<br>" +
@@ -287,83 +320,14 @@ window.onload = function() {
 "- Pless ? to show words you haven't gotten.<br>" +
 "- Hover over words to see definitions.<br>" +
 "- Reload the page (ctrl+r) to play another round.</b>");
-      return;
-    }
-    if (y >= wdsY && 
-        y < wdsY + wdsRowNum * (wdsLtrH + wdsInterSpaceY) - wdsInterSpaceY &&
-        (y - wdsY) % (wdsLtrH + wdsInterSpaceY) < wdsLtrH) {
-      var yIndex = Math.floor((y - wdsY) / (wdsLtrH + wdsInterSpaceY));
-      var colStartX = rackX;
-      var colEndX;
-      var xIndex = -1;
-      var xOffset;
-      for (var i = 0; i < colWidths.length; i++) {
-        colEndX = colStartX + colWidths[i];
-        if (x < colStartX) {
-          break;
-        }
-        if (x >= colStartX && x < colEndX) {
-          xIndex = i;
-          xOffset = x - colStartX;
-          break;
-        }
-        colStartX = colEndX + wdsColInterSpaceX;
-      }
-      if (x >= colStartX) {
-        xIndex = i;
-        xOffset = x - colStartX;
-      }
-      if (xIndex >= 0) {
-        var wdI = wdsRowNum * xIndex + yIndex;
-        if (wdI < wds.length && wdsGot[wdI] ^ showSwap && xOffset < 
-            wds[wdI].length * (wdsLtrW + wdsInterSpaceX) - wdsInterSpaceX) {
-          show_tooltip(x, y, "<b>" + wdsDef[wdI] + "</b>");
-          return;
-        }
-      }
-    }
-    tooltip.style.visibility = "hidden";
-  }
-  
-  window.onresize = resize;
-  window.addEventListener("keydown", keydown, true);
-  window.addEventListener("mousemove", mousemove, true);
-  get_round();
-}
+    resize();
+  }); 
+};
 </script>
 </head>
 <body>
-<canvas id="canv"></canvas>
-<div style="visibility:hidden;position:absolute;left:0px;top:0px;">
-<img width=0 height=0 src="img/help.png" />
-<img width=0 height=0 src="img/@.png" />
-<img width=0 height=0 src="img/A.png" />
-<img width=0 height=0 src="img/B.png" />
-<img width=0 height=0 src="img/C.png" />
-<img width=0 height=0 src="img/D.png" />
-<img width=0 height=0 src="img/E.png" />
-<img width=0 height=0 src="img/F.png" />
-<img width=0 height=0 src="img/G.png" />
-<img width=0 height=0 src="img/H.png" />
-<img width=0 height=0 src="img/I.png" />
-<img width=0 height=0 src="img/J.png" />
-<img width=0 height=0 src="img/K.png" />
-<img width=0 height=0 src="img/L.png" />
-<img width=0 height=0 src="img/M.png" />
-<img width=0 height=0 src="img/N.png" />
-<img width=0 height=0 src="img/O.png" />
-<img width=0 height=0 src="img/P.png" />
-<img width=0 height=0 src="img/Q.png" />
-<img width=0 height=0 src="img/R.png" />
-<img width=0 height=0 src="img/S.png" />
-<img width=0 height=0 src="img/T.png" />
-<img width=0 height=0 src="img/U.png" />
-<img width=0 height=0 src="img/V.png" />
-<img width=0 height=0 src="img/W.png" />
-<img width=0 height=0 src="img/X.png" />
-<img width=0 height=0 src="img/Y.png" />
-<img width=0 height=0 src="img/Z.png" />
-</div>
+<img id="help" src="img/help.png" align="right" />
+<!-- todo: tooltip on top -->
 <div id="tooltip" style="visibility:hidden;position:absolute;left:0px;top:0px;opacity:0.9;background:yellow;border-style:outset;border-color:orange;word-wrap:break-word;max-width:40em;">
 </div>
 </body>
