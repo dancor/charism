@@ -14,17 +14,25 @@ mkFilledSquare :: RGBi -> Double -> DPicture
 mkFilledSquare col n = mkFilledRect col n n
 
 mkFilledRect :: RGBi -> Double -> Double -> DPicture
-mkFilledRect col w h = frame [
-  fill col $ vertexPath [P2 0 0, P2 w 0, P2 w h, P2 0 h]
-  ]
+mkFilledRect col w h = frame [fill col $ rectPath w h]
+
+rectPath w h = vertexPath [P2 0 0, P2 w 0, P2 w h, P2 0 h]
+
+squarePath n = rectPath n n
 
 main :: IO ()
 main = do
   mapM_ makeLtr ['A'..'Z']
-  writeSVG_latin1 "@.svg" $ multi [
-    translate 10 10 $ mkFilledRect white 300 30,
-    mkFilledSquare green 320
+  -- fail..
+  {-
+  writeSVG_latin1 "@.svg" $ clip (squarePath 320) $ multi [
+    --translate 10 10 $
+    extendBoundary 10 280 $ mkFilledRect white 300 30
+    --extendBoundary 10 10 $ mkFilledRect black 300 30
+    --,
+    --mkFilledSquare green 320
     ]
+  -}
   writeSVG_latin1 "help.svg" $ frame [
     textlabel black (FontAttr 20 $ FontFace "monospace" "monospace" SVG_BOLD)
       "help" (P2 0 (0 :: Double))
