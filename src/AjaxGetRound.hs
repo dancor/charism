@@ -94,10 +94,10 @@ langToInfo = [
 main :: IO ()
 main = do
   let
-    langsToLexFs = map (second snd) langToInfo
+    langsToLexFs = map (second fst) langToInfo
     wdLen = 7
     lenReq l = l >= 3 && l <= wdLen
-  langToLex <- liftIO $ mapM_ (\ (lang, lexF) ->
+  langToLex <- liftIO $ mapM (\ (lang, lexF) ->
     ((,) lang . T.fromList . filter (lenReq . length . fst) . 
       map (bothond B.unpack . B.break (== ' ')) . B.lines) <$> B.readFile lexF
     ) langsToLexFs
@@ -108,7 +108,9 @@ main = do
       lookupFallback :: (Eq a) => a -> a -> [(a, b)] -> b
       lookupFallback k k' m = fromMaybe (fromJust $ lookup k' m) (lookup k m)
       ltrs = snd $ lookupFallback lang "en" langToInfo
-      lex = lookupFallback lang "en" langToLex
+      --lex = lookupFallback lang "en" langToLex
+      lex = lookupFallback lang "en" 
+        (langToLex :: [(String, Lex String)])
     wds <- liftIO . evalRandIO $ genWds lex Rand =<< genRack lex ltrs wdLen
     let 
       wdDefs = map (\ x -> x ++ " " ++ fromJust (flip T.lookup lex x)) wds
