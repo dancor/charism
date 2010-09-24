@@ -265,7 +265,7 @@ window.onload = function() {
     var ordR = ord('R');
     var ordL = ord('L');
     function keypress(e) {
-      var i = e.keyCode;
+      var i = e.which ? e.which : e.keyCode ? e.keyCode : e.charCode;
       var c;
       if (i == ordA) {
         c = '\u00C4';
@@ -287,7 +287,6 @@ window.onload = function() {
         return;
       }
       for (var j = 0; j < ltrNum; j++) {
-        console.log(c);
         if (bag[j].c == c) {
           for (var k = 0; k <= ltrNum; k++) {
             if (rack[k].c == '@') {
@@ -301,7 +300,7 @@ window.onload = function() {
       }
     }
     function keydown(e) {
-      var i = e.keyCode % 128;
+      var i = (e.which ? e.which : e.keyCode ? e.keyCode : e.charCode) % 128;
       if (i == 8 || i == 92) {
         for (var i = ltrNum - 1; i >= 0; i--) {
           if (rack[i].c != '@') {
