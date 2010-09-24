@@ -6,8 +6,11 @@ body {
   background: #227;
 }
 </style>
+<meta http-equiv="X-UA-Compatible" content="IE=8" />
+<!--
 <script type="text/javascript"
  src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js">
+ -->
 </script>
 <script type="text/javascript">
 function last(a) {
@@ -85,7 +88,7 @@ function ajaj(path, f) {
     }
   }
   r.open("GET", "ajax/" + path, true);
-  r.send();
+  r.send("");
 }
 function replicate(n, v) {
   var r = [];
@@ -177,6 +180,14 @@ window.onload = function() {
     a.addEventListener("mouseout", function(e) {
       tooltip.style.visibility = "hidden";}, true);
   }
+  function tooltipifyCond(a, content, f) {
+    a.addEventListener("mouseover", function(e) {
+      if (f()) {
+        showTooltip(e.clientX, e.clientY, content);
+      }}, true);
+    a.addEventListener("mouseout", function(e) {
+      tooltip.style.visibility = "hidden";}, true);
+  }
   ajaj("get_round?lang=" + lang, function(resp) {
     var wdsRaw = resp[0];
     var bag = createLtrs(bagX, bagY, bagLtrW, bagLtrH, bagInterSpaceX,
@@ -192,7 +203,9 @@ window.onload = function() {
         def: def
         };
       for (var j = 0; j < wdsRaw[i].length; j++) {
-        tooltipify(wds[i].ltrs[j].img, "<b>" + def + "</b>");
+        tooltipifyCond(wds[i].ltrs[j].img, "<b>" + def + "</b>", function() {
+          return true;
+        });
       }
     }
     function resize() {
@@ -277,9 +290,9 @@ window.onload = function() {
         c = '\u00D1';
       } else if (i == ordC) {
         c = '1';
-      } else if (i == ordR) {
-        c = '2';
       } else if (i == ordL) {
+        c = '2';
+      } else if (i == ordR) {
         c = '3';
       } else if (i >= 97 && i <= 122) {
         c = chr(i - 32);

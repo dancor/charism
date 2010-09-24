@@ -129,8 +129,7 @@ main :: IO ()
 main = do
   let
     langsToLexFs = map (second fst) langToInfo
-    --wdLen = 7
-    wdLen = 5
+    wdLen = 7
     lenReq l = l >= 3 && l <= wdLen
   langToLex <- liftIO $ mapM (\ (lang, lexF) ->
     ((,) lang . T.fromList . filter (lenReq . length . fst) .
