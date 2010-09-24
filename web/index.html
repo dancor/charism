@@ -10,8 +10,8 @@ body {
 <!--
 <script type="text/javascript"
  src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js">
- -->
 </script>
+ -->
 <script type="text/javascript">
 function last(a) {
   return a[a.length - 1];
@@ -180,9 +180,9 @@ window.onload = function() {
     a.addEventListener("mouseout", function(e) {
       tooltip.style.visibility = "hidden";}, true);
   }
-  function tooltipifyCond(a, content, f) {
+  function tooltipifyCond(a, content, f, d) {
     a.addEventListener("mouseover", function(e) {
-      if (f()) {
+      if (f(d)) {
         showTooltip(e.clientX, e.clientY, content);
       }}, true);
     a.addEventListener("mouseout", function(e) {
@@ -202,10 +202,13 @@ window.onload = function() {
         got: false,
         def: def
         };
+    }
+    for (var i = 0; i < wdsRaw.length; i++) {
       for (var j = 0; j < wdsRaw[i].length; j++) {
-        tooltipifyCond(wds[i].ltrs[j].img, "<b>" + def + "</b>", function() {
-          return true;
-        });
+        tooltipifyCond(wds[i].ltrs[j].img, "<b>" + def + "</b>", 
+          function(myI) {
+            return wds[myI].got ^ showSwap;
+          }, i);
       }
     }
     function resize() {
