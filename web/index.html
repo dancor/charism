@@ -257,6 +257,13 @@ window.onload = function() {
         }
       }
     }
+    var ordA = ord('A');
+    var ordO = ord('O');
+    var ordU = ord('U');
+    var ordN = ord('N');
+    var ordC = ord('C');
+    var ordR = ord('R');
+    var ordL = ord('L');
     function keypress(e) {
       var i = e.keyCode;
       var c;
@@ -335,13 +342,14 @@ window.onload = function() {
     window.addEventListener("keypress", keypress, true);
     window.addEventListener("keydown", keydown, true);
     tooltipify(helpBox, "<b>Use the keyboard to make words:<br>" +
-"- Type letters to move letters to your working rack.<br>" + 
+"- Type lowercase letters to move letters to your working rack.<br>" + 
 "- Press backspace or \\ to move one letter off your working rack.<br>" +
 "- Press escape to move all letters off your working rack.<br>" +
 "- Press enter when you have made a word.<br>" + 
 "- Press spacebar to shuffle the letters on the source rack.<br>" +
 "- Pless ? to show words you haven't gotten.<br>" +
 "- Hover over words to see definitions.<br>" +
+"- Use uppercase to enter foreign tiles (A for \u00C4, C for CH).<br>" + 
 "- Reload the page (ctrl+r) to play another round.</b>");
     resize();
   }); 
