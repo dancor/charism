@@ -6,7 +6,6 @@ import Control.Monad
 import Control.Monad.Random
 import Data.Char
 import Data.Maybe
-import FUtil
 import System.Console.GetOpt
 import System.Directory
 import System.Environment

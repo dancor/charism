@@ -5,10 +5,12 @@ import Control.Exception (evaluate)
 import Control.Monad
 import Control.Monad.Random
 import Data.Char
+import Data.Function
+import Data.List
+import Data.List.Split
 import Data.Maybe
 import Data.Monoid
 import Data.Ord
-import FUtil
 import System.Console.GetOpt
 import System.IO
 import System.Random
@@ -23,10 +25,15 @@ import qualified Opt
 
 type Lex a = T.Trie Char a
 
+randShuffle :: (MonadRandom m) => [b] -> m [b]
+randShuffle l = do
+  rndInts <- getRandoms
+  return . map snd . sortBy (compare `on` fst) $ zip (rndInts :: [Int]) l
+
 -- pull tiles out of bag that happen to make words
 genRack :: (RandomGen g) => Lex a -> String -> Int -> Rand g String
 genRack lex ltrs wdLen = do
-  wd <- take wdLen <$> shuffle ltrs
+  wd <- take wdLen <$> randShuffle ltrs
   case allFullWds lex wd of
     [] -> genRack lex ltrs wdLen
     _ -> return wd
@@ -102,8 +109,9 @@ replPos :: Int -> [a] -> a -> [a]
 replPos i xs x = take i xs ++ [x] ++ drop (i + 1) xs
 
 squashList :: Int -> Int -> [String] -> [String]
-squashList width wdLen wds = map interwords $ splitN wdsPerLine wds where
-  wdsPerLine = ceiling (fromIntegral (width + 1) / fromIntegral (wdLen + 1))
+squashList width wdLen wds = map (intercalate " ") $ chunksOf wdsPerLine wds
+  where
+    wdsPerLine = ceiling (fromIntegral (width + 1) / fromIntegral (wdLen + 1))
 
 askWd :: String -> String -> [String] -> [String] -> String -> Maybe String ->
   Bool -> IO ()
@@ -118,7 +126,7 @@ askWd wdOrig wd wds wdsGot wdPartial wdWrongMby fullDraw = do
     charWidth = ceiling (fromIntegral
       (n + (sum $ map (\ (i, ws) -> i * length ws) $ M.toList lenToWds)) /
       fromIntegral (maxHeight + 1 - length (M.toList lenToWds))) - 1
-    list = interlines $ L.intercalate [[]] $
+    list = intercalate "\n" $ L.intercalate [[]] $
       map (uncurry (squashList charWidth)) $ M.toList lenToWds
     wrongStr = if isNothing wdWrongMby || length (fromJust wdWrongMby) < 3
       then ""
@@ -139,7 +147,13 @@ askWd wdOrig wd wds wdsGot wdPartial wdWrongMby fullDraw = do
         wdPartial, init wdPartial, wdsGot, Nothing, False, False)
   (wd', wdPartial', wdsGot', wdWrongMby', fullDraw', quit) <- case cU of
     ' '  -> newStdGen >>= \g -> return
-      (fst $ runRand (shuffle wd) g, wdPartial, wdsGot, Nothing, False, False)
+      ( fst $ runRand (randShuffle wd) g
+      , wdPartial
+      , wdsGot
+      , Nothing
+      , False
+      , False
+      )
     '\n' -> if wdPartial `elem` wds
       then return (wdOrig, "", wdsGot ++ [wdPartial], Nothing, True, False)
       else putStr "\027[A" >>
