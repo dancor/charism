@@ -10,6 +10,7 @@ body {
  src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js">
 </script>
 <script type="text/javascript">
+var unchosenLtr = "_";
 function last(a) {
   return a[a.length - 1];
 }
@@ -40,12 +41,12 @@ function shuffle(a) {
 }
 function putInFirstEmpty(a, c) {
   for (var i = 0; i < a.length; i++) {
-    if (a[i].c == '@') {
+    if (a[i].c == unchosenLtr) {
       ltrSetC(a[i], c);
       return;
     }
   }
-  throw('something went wrong in putInFirstEmpty');
+  throw("something went wrong in putInFirstEmpty");
 }
 function getParam(name) {
   // fixme: make this do decoding?
@@ -76,16 +77,6 @@ function createLtrs(x, y, ltrW, ltrH, interSpaceW, cs, tooltip) {
     r[i] = createLtr(x + i * (ltrW + interSpaceW), y, ltrW, ltrH, cs[i]);
   }
   return r;
-}
-function ajaj(path, f) {
-  r = new XMLHttpRequest();
-  r.onreadystatechange = function() {
-    if (r.readyState == 4) {
-      f(JSON.parse(r.responseText));
-    }
-  }
-  r.open("GET", "ajax/" + path, true);
-  r.send();
 }
 function replicate(n, v) {
   var r = [];
@@ -149,7 +140,7 @@ window.onload = function() {
   var showSwap = false;
 
   var rack = createLtrs(rackX, rackY, rackLtrW, rackLtrH, rackInterSpaceX,
-    replicate(ltrNum, "@"));
+    replicate(ltrNum, unchosenLtr));
   var lang = "en";
   var langParam = getParam("lang");
   if (langParam == "de") {
@@ -177,13 +168,13 @@ window.onload = function() {
     a.addEventListener("mouseout", function(e) {
       tooltip.style.visibility = "hidden";}, true);
   }
-  ajaj("get_round?lang=" + lang, function(resp) {
-    var wdsRaw = resp[0];
+
+    var wdsRaw = ["exaltes"];
     var bag = createLtrs(bagX, bagY, bagLtrW, bagLtrH, bagInterSpaceX,
       shuffle(strToArr(last(wdsRaw))));
     var wds = [];
     for (var i = 0; i < wdsRaw.length; i++) {
-      var def = resp[1][i];
+      var def = "loldef";
       wds[i] = {
         ltrs: createLtrs(wdsX, wdsY + i * (wdsLtrH + wdsInterSpaceY), 
           wdsLtrW, wdsLtrH, wdsInterSpaceX, wdsRaw[i]),
@@ -232,7 +223,7 @@ window.onload = function() {
         if (wds[i].got ^ showSwap) {
           curWd = wds[i].wd;
         } else {
-          curWd = replicate(wds[i].wd.length, "@");
+          curWd = replicate(wds[i].wd.length, unchosenLtr);
         }
         updateLtrs(wds[i].ltrs, x, y, wdsLtrWCur, wdsLtrHCur, wdsInterSpaceX, 
           curWd);
@@ -251,9 +242,9 @@ window.onload = function() {
     }
     function rackToBag() {
       for (var i = 0; i < rack.length; i++) {
-        if (rack[i].c != '@') {
+        if (rack[i].c != unchosenLtr) {
           putInFirstEmpty(bag, rack[i].c);
-          ltrSetC(rack[i], '@');
+          ltrSetC(rack[i], unchosenLtr);
         }
       }
     }
@@ -264,20 +255,20 @@ window.onload = function() {
         for (var j = 0; j < ltrNum; j++) {
           if (bag[j].c == c) {
             for (var k = 0; k <= ltrNum; k++) {
-              if (rack[k].c == '@') {
+              if (rack[k].c == unchosenLtr) {
                 ltrSetC(rack[k], c);
                 break;
               }
             }
-            ltrSetC(bag[j], '@');
+            ltrSetC(bag[j], unchosenLtr);
             break;
           }
         }
       } else if (i == 8 || i == 92) {
         for (var i = ltrNum - 1; i >= 0; i--) {
-          if (rack[i].c != '@') {
+          if (rack[i].c != unchosenLtr) {
             putInFirstEmpty(bag, rack[i].c);
-            ltrSetC(rack[i], '@');
+            ltrSetC(rack[i], unchosenLtr);
             break;
           }
         }
@@ -285,9 +276,9 @@ window.onload = function() {
         updateLtrs(bag, bagX, bagY, bagLtrW, bagLtrH, bagInterSpaceX,
           arrToStr(shuffle(strToArr(ltrsToCs(bag)))));
       } else if (i == 13) {
-        var rackWd = '';
+        var rackWd = "";
         for (var i = 0; i < ltrNum; i++) {
-          if (rack[i].c != '@') {
+          if (rack[i].c != unchosenLtr) {
             rackWd += rack[i].c;
           }
         }
@@ -321,7 +312,6 @@ window.onload = function() {
 "- Hover over words to see definitions.<br>" +
 "- Reload the page (ctrl+r) to play another round.</b>");
     resize();
-  }); 
 };
 </script>
 </head>

@@ -51,16 +51,15 @@ genWds lex wdOrd wd = case wdOrd of
       comparing (map $ fromJust . flip M.lookup charToRand)) wds
   where wds = allWds lex wd
 
-{-
 askWds :: Lex a -> Int -> WordOrder -> IO ()
 askWds lex wdLen wdOrd = do
-  wd <- evalRandIO $ genRack lex wdLen
+  let myLtrs = concat $ replicate 4 "abcdefghijklmnopqrstuvwxyz"
+  wd <- evalRandIO $ genRack lex myLtrs wdLen
   wds <- evalRandIO $ genWds lex wdOrd wd
   putStr "\027[2J"
   hFlush stdout
   askWd wd wd wds [] "" Nothing True
   askWds lex wdLen wdOrd
-  -}
 
 splitOut :: [x] -> Int -> (x, [x])
 splitOut xs i = (head p2, p1 ++ tail p2) where (p1, p2) = splitAt i xs

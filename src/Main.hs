@@ -29,14 +29,13 @@ main = do
   when (not $ null args) $ print "lol"
   print "loading lexicon"
   print "todo"
-  {-
+  let
+    lexFN = "/usr/share/dict/enable.txt"
   ls <- B.lines <$> (B.hGetContents =<< openFile lexFN ReadMode)
   let
     lenReq l = l >= Opt.minWordLen opts && l <= Opt.maxWordLen opts
-    killR = filter (/= '\r')  -- TODO better here (BS func ya?)
     lex = T.fromList . map (flip (,) ()) . filter (lenReq . length) $
-      map (killR . B.unpack) ls
+      map B.unpack ls
   lex `seq` print "loaded lexicon"
   hSetBuffering stdin NoBuffering
   askWds lex (Opt.maxWordLen opts) (Opt.wordOrder opts)
-  -}
