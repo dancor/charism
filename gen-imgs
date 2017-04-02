@@ -1,0 +1,25 @@
+#!/bin/sh
+set -e
+mkdir -p web/img
+cd web/img
+
+for i in a b c d e f g h i j k l m n o p q r s t u v w x y z á é í ó ú ü ñ
+do
+    UPPER=$(echo $i | python3 -c 'import sys; print(sys.stdin.read().upper())')
+    convert -size 64x64 xc:transparent -fill white -stroke black \
+        -draw "roundrectangle 0,0 63,63 20,15" \
+        -fill black -gravity South -pointsize 60 -annotate +0-4 $UPPER $i.png
+done
+
+convert -size 64x64 xc:transparent -fill gray60 -stroke white \
+    -draw "stroke-dasharray 5 3 roundrectangle 0,0 63,63 20,15" _.png
+convert -size 64x64 xc:transparent -fill gray60 -stroke white \
+    -draw "stroke-dasharray 5 3 roundrectangle 0,0 63,63 20,15" \
+    -fill gray -gravity center -pointsize 30 -annotate +0+4 '?' wtf.png
+# Convert won't output to @.png directly for some reason.
+mv wtf.png @.png
+convert -size 32x32 xc:transparent -fill yellow -stroke orange \
+    -draw "roundrectangle 0,0 31,31 10,15" \
+    -fill black -stroke none \
+    -gravity South -pointsize 18 -annotate +1+4 '???' help.png
+#convert -size 32x32 xc:Green -gravity South -pointsize 18 -annotate 0 '✔' ✔.png

@@ -238,6 +238,10 @@ window.onload = function() {
                         (parseFloat(tiles[i].img.style.left) - rack0X) / cellW),
                     toY = Math.round(
                         (parseFloat(tiles[i].img.style.top) - rack0Y) / cellH);
+                if (toX < 0) {toX = 0;}
+                if (toY < 0) {toY = 0;}
+                if (toX >= ltrNum) {toX = ltrNum - 1;}
+                if (toY > 1) {toY = 1;}
                 tiles[i].img.style.left = toX * cellW + rack0X;
                 tiles[i].img.style.top = toY * cellH + rack0Y;
             }.bind(null, i);
