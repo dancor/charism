@@ -184,6 +184,10 @@ function rackEndToBag() {
 window.onload = function() {
     tooltip = document.getElementById("tooltip");
     helpBox = document.getElementById("help");
+    helpBox.onclick = function() {
+        showSwap = !showSwap;
+        resize();
+    }
     /*
     if (langParam == "de") {
         lang = "de";
@@ -213,10 +217,16 @@ window.onload = function() {
     }
 
     wdsRaw = pickWords();
-    createLtrs(rack0X, rack0Y, rack0LtrW, rack0LtrH, rack0InterSpaceX,
+    tmp = createLtrs(rack0X, rack0Y, rack0LtrW, rack0LtrH, rack0InterSpaceX,
         replicate(ltrNum, "_"));
-    createLtrs(rackX, rackY, rackLtrW, rackLtrH, rackInterSpaceX,
+    for (i = 0; i < ltrNum; i++) {
+        tmp[i].img.onmousedown = function(){return false;}
+    }
+    tmp = createLtrs(rackX, rackY, rackLtrW, rackLtrH, rackInterSpaceX,
         replicate(ltrNum, noLtr));
+    for (i = 0; i < ltrNum; i++) {
+        tmp[i].img.onmousedown = function(){return false;}
+    }
     var shuffledLtrs = shuffle(strToArr(last(wdsRaw)));
     rack = [shuffledLtrs, replicate(ltrNum, noLtr)];
     tiles = createLtrs(rack0X, rack0Y, rack0LtrW, rack0LtrH, rack0InterSpaceX,
@@ -252,10 +262,10 @@ window.onload = function() {
                 var toX = Math.round((imgL - rack0X) / cellW);
                 var toY = Math.round((imgT - rack0Y) / cellH);
 
-                if (toX < 0) {toX = 0;}
-                if (toY < 0) {toY = 0;}
-                if (toX >= ltrNum) {toX = ltrNum - 1;}
-                if (toY > 1) {toY = 1;}
+                if (toX < 0) {return;}
+                if (toY < 0) {return;}
+                if (toX >= ltrNum) {return;}
+                if (toY > 1) {return;}
 
                 function tryPushRight() {
                     var foundOpenX = false;
@@ -292,7 +302,7 @@ window.onload = function() {
 
                 if ((fromX != toX || fromY != toY) && 
                         rack[toY][toX] != noLtr) {
-                    if (imgL <= toX * cellW + rack0X) {
+                    if (imgL <= (toX - 0.5) * cellW + rack0X) {
                         if (tryPushRight()) {
                             return;
                         } else if (tryPushLeft()) {
@@ -362,11 +372,12 @@ window.onload = function() {
             };
         for (var j = 0; j < wdsRaw[i].length; j++) {
             tooltipify(wds[i].ltrs[j].img, "<b>" + def + "</b>");
-            wds[i].ltrs[j].img.onclick = function(wd){
+            wds[i].ltrs[j].img.onmousedown = function(wd){
                 window.open(
                     //"https://en.wiktionary.org/wiki/" + wd + "#Spanish",
                     "http://localhost:3000/A/" + wd + ".html",
                     "_blank");
+                return false;
             }.bind(null, wdsRaw[i]);
         }
     }
@@ -442,21 +453,14 @@ window.onload = function() {
             }
         }
     }
-    /*
-    function mouseup(whichRack, rackPos) {
-        if (curDown) {
-            var c = rack[curDown[0]][curDown[1]].c;
-            ltrSetC(rack[curDown[0]][curDown[1]], rack[whichRack][rackPos].c);
-            ltrSetC(rack[whichRack][rackPos], c);
-            curDown = false;
-        }
-        checkIfGotWd();
-        return false;
-    }
-    */
     function keydown(e) {
-        //var i = e.keyCode % 128;
         var i = e.keyCode;
+        if (i % 128 == 63) {
+            showSwap = !showSwap;
+            resize();
+        }
+    /*
+        //var i = e.keyCode % 128;
         //console.log(i);
         if (i >= 65 && i <= 90) {
             var c = chr(i).toLowerCase();
@@ -489,6 +493,7 @@ window.onload = function() {
         } else {
             //console.log(i);
         }
+    */
         return false;
     }
     window.addEventListener("resize", resize, true);
@@ -507,7 +512,7 @@ window.onload = function() {
 </script>
 </head>
 <body>
-<img id="help" src="img/help.png" align="right" />
+<img id="help" src="img/help.png" align="right"/>
 <!-- todo: tooltip on top -->
 <div id="tooltip" style="visibility:hidden;position:absolute;left:0px;top:0px;opacity:0.9;background:yellow;border-style:outset;border-color:orange;word-wrap:break-word;max-width:40em;z-index:100">
 </div>
