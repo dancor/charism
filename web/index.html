@@ -18,7 +18,7 @@ body {
 
 <script type="text/javascript" src="pickWords.js" charset="utf-8"></script>
 <script type="text/javascript">
-var unchosenLtr = "@";
+var noLtr = "@";
 
 var tooltip;
 var helpBox;
@@ -92,7 +92,7 @@ function shuffle(a) {
 }
 function putInFirstEmpty(a, c) {
     for (var i = 0; i < a.length; i++) {
-        if (a[i].c == unchosenLtr) {
+        if (a[i].c == noLtr) {
             ltrSetC(a[i], c);
             return;
         }
@@ -163,20 +163,20 @@ function ltrsToCs(ltrs) {
 }
 function rack0ToRack(rack0I) {
     for (var rackI = 0; rackI <= ltrNum; rackI++) {
-        if (rack[1][rackI].c == unchosenLtr) {
+        if (rack[1][rackI].c == noLtr) {
             ltrSetC(rack[1][rackI], rack[0][rack0I].c);
             break;
         }
     }
-    ltrSetC(rack[0][rack0I], unchosenLtr);
+    ltrSetC(rack[0][rack0I], noLtr);
 }
 function rackToBag(rackI) {
     putInFirstEmpty(rack[0], rack[1][rackI].c);
-    ltrSetC(rack[1][rackI], unchosenLtr);
+    ltrSetC(rack[1][rackI], noLtr);
 }
 function rackEndToBag() {
     for (var rackI = 0; rackI < rack[1].length; rackI++) {
-        if (rack[1][rackI].c != unchosenLtr) {
+        if (rack[1][rackI].c != noLtr) {
             rackToBag(rackI);
         }
     }
@@ -216,11 +216,27 @@ window.onload = function() {
     createLtrs(rack0X, rack0Y, rack0LtrW, rack0LtrH, rack0InterSpaceX,
         replicate(ltrNum, "_"));
     createLtrs(rackX, rackY, rackLtrW, rackLtrH, rackInterSpaceX,
-        replicate(ltrNum, unchosenLtr));
+        replicate(ltrNum, noLtr));
     var shuffledLtrs = shuffle(strToArr(last(wdsRaw)));
-    rack = [shuffledLtrs, replicate(ltrNum, unchosenLtr)];
+    rack = [shuffledLtrs, replicate(ltrNum, noLtr)];
     tiles = createLtrs(rack0X, rack0Y, rack0LtrW, rack0LtrH, rack0InterSpaceX,
         shuffledLtrs);
+    function moveTile(srcX, srcY, dstX, dstY) {
+        tmp = rack[dstY][dstX];
+        rack[dstY][dstX] = rack[srcY][srcX];
+        rack[srcY][srcX] = tmp;
+        for (var tileI = 0; tileI < ltrNum; tileI++) {
+            if (tiles[tileI].x == srcX && tiles[tileI].y == srcY) {
+                tiles[tileI].x = dstX;
+                tiles[tileI].y = dstY;
+                tiles[tileI].img.style.left =
+                    dstX * cellW + rack0X;
+                tiles[tileI].img.style.top =
+                    dstY * cellH + rack0Y;
+                break;
+            }
+        }
+    }
     for (var i = 0; i < ltrNum; i++) {
         tiles[i].img.id = "t" + i;
         tiles[i].x = i;
@@ -235,29 +251,62 @@ window.onload = function() {
                     imgT = parseFloat(tiles[i].img.style.top),
                     toX = Math.round((imgL - rack0X) / cellW),
                     toY = Math.round((imgT - rack0Y) / cellH);
+
                 if (toX < 0) {toX = 0;}
                 if (toY < 0) {toY = 0;}
                 if (toX >= ltrNum) {toX = ltrNum - 1;}
                 if (toY > 1) {toY = 1;}
-                if ((fromX != toX || fromY != toY) && 
-                        rack[toY][toX] != unchosenLtr) {
-                    // try to push right
-                    
-                    // swap
-                    tmp = rack[fromY][fromX];
-                    rack[fromY][fromX] = rack[toY][toX];
-                    rack[toY][toX] = tmp;
-                    for (var tileI = 0; tileI < ltrNum; tileI++) {
-                        if (tiles[tileI].x == toX && tiles[tileI].y == toY) {
-                            tiles[tileI].x = fromX;
-                            tiles[tileI].y = fromY;
-                            tiles[tileI].img.style.left =
-                                fromX * cellW + rack0X;
-                            tiles[tileI].img.style.top =
-                                fromY * cellH + rack0Y;
+
+                function tryPushRight() {
+                    var foundOpenX = false;
+                    for (var openX = toX + 1; openX < ltrNum; openX++) {
+                        if (rack[toY][openX] == noLtr) {
+                            foundOpenX = true;
                             break;
                         }
                     }
+                    if (foundOpenX) {
+                        for (var swapX = openX; swapX > toX; swapX--) {
+                            moveTile(swapX - 1, toY, swapX, toY);
+                        }
+                        return true;
+                    }
+                    return false;
+                }
+                function tryPushLeft() {
+                    var foundOpenX = false;
+                    for (var openX = toX - 1; openX >= 0; openX--) {
+                        if (rack[toY][openX] == noLtr) {
+                            foundOpenX = true;
+                            break;
+                        }
+                    }
+                    if (foundOpenX) {
+                        for (var swapX = openX; swapX < toX; swapX++) {
+                            moveTile(swapX + 1, toY, swapX, toY);
+                        }
+                        return true;
+                    }
+                    return false;
+                }
+
+                if ((fromX != toX || fromY != toY) && 
+                        rack[toY][toX] != noLtr) {
+                    if (imgL <= toX * cellW + rack0X) {
+                        if (tryPushRight()) {
+                            return;
+                        } else if (tryPushLeft()) {
+                            return;
+                        }
+                    } else {
+                        if (tryPushLeft()) {
+                            return;
+                        } else if (tryPushRight()) {
+                            return;
+                        }
+                    }
+                    // swap
+                    moveTile(toX, toY, fromX, fromY);
                     tiles[i].x = toX;
                     tiles[i].y = toY;
                 }
@@ -358,7 +407,7 @@ window.onload = function() {
             if (wds[i].got ^ showSwap) {
                 curWd = wds[i].wd;
             } else {
-                curWd = replicate(wds[i].wd.length, unchosenLtr);
+                curWd = replicate(wds[i].wd.length, noLtr);
             }
             updateLtrs(wds[i].ltrs, x, y, wdsLtrWCur, wdsLtrHCur, wdsInterSpaceX, 
                 curWd);
@@ -378,12 +427,12 @@ window.onload = function() {
     function checkIfGotWd() {
         var rackWd = "";
         for (var i = 0; i < ltrNum; i++) {
-            if (rack[1][i] != unchosenLtr) {
+            if (rack[1][i] != noLtr) {
                 rackWd += rack[1][i];
             }
         }
-        console.log(rack[0]);
-        console.log(rack[1]);
+        //console.log(rack[0]);
+        //console.log(rack[1]);
         for (var i = 0; i < wds.length; i++) {
             if (wds[i].wd == rackWd) {
                 wds[i].got = true;
@@ -420,9 +469,9 @@ window.onload = function() {
             checkIfGotWd();
         } else if (i == 8 || i == 92) { // backspace, delete
             for (var i = ltrNum - 1; i >= 0; i--) {
-                if (rack[1][i].c != unchosenLtr) {
+                if (rack[1][i].c != noLtr) {
                     putInFirstEmpty(rack[0], rack[1][i].c);
-                    ltrSetC(rack[1][i], unchosenLtr);
+                    ltrSetC(rack[1][i], noLtr);
                     break;
                 }
             }
