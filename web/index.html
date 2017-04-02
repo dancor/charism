@@ -3,7 +3,7 @@
 <title>charism</title>
 <style>
 body {
-  background: #227;
+  background: #adf;
   -webkit-user-select: none;
      -moz-user-select: -moz-none;
       -ms-user-select: none;
@@ -18,7 +18,7 @@ body {
 
 <script type="text/javascript" src="pickWords.js" charset="utf-8"></script>
 <script type="text/javascript">
-var unchosenLtr = "_";
+var unchosenLtr = "@";
 
 var tooltip;
 var helpBox;
@@ -51,8 +51,10 @@ var wdsRowNum = 0;
 var showSwap = false;
 
 var rack = [];
+/*
 var lang = "en";
 var langParam = getParam("lang");
+*/
 
 var wdsRaw;
 var wds;
@@ -94,6 +96,7 @@ function putInFirstEmpty(a, c) {
     }
     throw("something went wrong in putInFirstEmpty");
 }
+/*
 function getParam(name) {
     // fixme: make this do decoding?
     name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
@@ -106,6 +109,7 @@ function getParam(name) {
         return results[1];
     }
 }
+*/
 function createLtr(x, y, ltrW, ltrH, c) {
     var img = document.createElement("img");
     img.src = "img/" + c + ".png";
@@ -179,23 +183,14 @@ function mousedown(whichRack, rackPos) {
     curDown = [whichRack, rackPos];
     return false;
 }
-function mouseup(whichRack, rackPos) {
-    if (curDown) {
-        var c = rack[curDown[0]][curDown[1]].c;
-        ltrSetC(rack[curDown[0]][curDown[1]], rack[whichRack][rackPos].c);
-        ltrSetC(rack[whichRack][rackPos], c);
-        curDown = false;
-    }
-    return false;
-}
 window.onload = function() {
     tooltip = document.getElementById("tooltip");
     helpBox = document.getElementById("help");
-    rack[1] = createLtrs(rackX, rackY, rackLtrW, rackLtrH, rackInterSpaceX,
-        replicate(ltrNum, unchosenLtr));
+    /*
     if (langParam == "de") {
         lang = "de";
     }
+    */
     function showTooltip(x, y, content) {
         tooltip.style.left = 0;
         tooltip.style.top = 0;
@@ -221,12 +216,34 @@ window.onload = function() {
 
     wdsRaw = pickWords();
     rack[0] = createLtrs(rack0X, rack0Y, rack0LtrW, rack0LtrH, rack0InterSpaceX,
+        replicate(ltrNum, "_"));
+    rack[1] = createLtrs(rackX, rackY, rackLtrW, rackLtrH, rackInterSpaceX,
+        replicate(ltrNum, unchosenLtr));
+    tiles = createLtrs(rack0X, rack0Y, rack0LtrW, rack0LtrH, rack0InterSpaceX,
         shuffle(strToArr(last(wdsRaw))));
     for (var i = 0; i < ltrNum; i++) {
         rack[0][i].img.onmousedown = mousedown.bind(null, 0, i);
         rack[0][i].img.onmouseup = mouseup.bind(null, 0, i);
         rack[1][i].img.onmousedown = mousedown.bind(null, 1, i);
         rack[1][i].img.onmouseup = mouseup.bind(null, 1, i);
+        tiles[i].img.id = "t" + i;
+        tiles[i].x = i;
+        tiles[i].y = 0;
+        var onstop = function(i, e, ui) {
+                var fromX = tiles[i].x,
+                    fromY = tiles[i].y,
+                    cellW = rack0LtrW + rack0InterSpaceX,
+                    cellH = rack0LtrH + rack0InterSpaceY,
+                    toX = Math.round(
+                        (parseFloat(tiles[i].img.style.left) - rack0X) / cellW),
+                    toY = Math.round(
+                        (parseFloat(tiles[i].img.style.top) - rack0Y) / cellH);
+                tiles[i].img.style.left = toX * cellW + rack0X;
+                tiles[i].img.style.top = toY * cellH + rack0Y;
+            }.bind(null, i);
+        $("#t" + i).draggable({
+            stop: onstop
+        });
     }
     wds = [];
     for (var i = 0; i < wdsRaw.length; i++) {
@@ -302,8 +319,36 @@ window.onload = function() {
             }
         }
     }
+    function checkIfGotWd() {
+        var rackWd = "";
+        for (var i = 0; i < ltrNum; i++) {
+            if (rack[1][i].c != unchosenLtr) {
+                rackWd += rack[1][i].c;
+            }
+        }
+        for (var i = 0; i < wds.length; i++) {
+            if (wds[i].wd == rackWd) {
+                wds[i].got = true;
+                //rackEndToBag();
+                resize();
+                break;
+            }
+        }
+    }
+    function mouseup(whichRack, rackPos) {
+        if (curDown) {
+            var c = rack[curDown[0]][curDown[1]].c;
+            ltrSetC(rack[curDown[0]][curDown[1]], rack[whichRack][rackPos].c);
+            ltrSetC(rack[whichRack][rackPos], c);
+            curDown = false;
+        }
+        checkIfGotWd();
+        return false;
+    }
     function keydown(e) {
-        var i = e.keyCode % 128;
+        //var i = e.keyCode % 128;
+        var i = e.keyCode;
+        console.log(i);
         if (i >= 65 && i <= 90) {
             var c = chr(i).toLowerCase();
             for (var i = 0; i < ltrNum; i++) {
@@ -312,7 +357,8 @@ window.onload = function() {
                     break;
                 }
             }
-        } else if (i == 8 || i == 92) {
+            checkIfGotWd();
+        } else if (i == 8 || i == 92) { // backspace, delete
             for (var i = ltrNum - 1; i >= 0; i--) {
                 if (rack[1][i].c != unchosenLtr) {
                     putInFirstEmpty(rack[0], rack[1][i].c);
@@ -320,28 +366,15 @@ window.onload = function() {
                     break;
                 }
             }
-        } else if (i == 32) {
+        } else if (i == 32) { // spacebar to shuffle
             updateLtrs(rack[0], rack0X, rack0Y, rack0LtrW, rack0LtrH,
                 rack0InterSpaceX,
                 arrToStr(shuffle(strToArr(ltrsToCs(rack[0])))));
-        } else if (i == 13) {
-            var rackWd = "";
-            for (var i = 0; i < ltrNum; i++) {
-                if (rack[1][i].c != unchosenLtr) {
-                    rackWd += rack[1][i].c;
-                }
-            }
-            for (var i = 0; i < wds.length; i++) {
-                if (wds[i].wd == rackWd) {
-                    wds[i].got = true;
-                    rackEndToBag();
-                    resize();
-                    break;
-                }
-            }
-        } else if (i == 27) {
+        } else if (i == 13) { // enter
+            //checkForWd();
+        } else if (i == 27) { // escape to clear rack
             rackEndToBag();
-        } else if (i == 63) {
+        } else if (i % 128 == 63) {
             showSwap = !showSwap;
             resize();
         } else {
