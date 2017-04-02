@@ -245,12 +245,12 @@ window.onload = function() {
                 tiles[i].img.style.zIndex = 100;
             }.bind(null, i);
         var ondrag = function(i) {
-                var fromX = tiles[i].x,
-                    fromY = tiles[i].y,
-                    imgL = parseFloat(tiles[i].img.style.left),
-                    imgT = parseFloat(tiles[i].img.style.top),
-                    toX = Math.round((imgL - rack0X) / cellW),
-                    toY = Math.round((imgT - rack0Y) / cellH);
+                var fromX = tiles[i].x;
+                var fromY = tiles[i].y;
+                var imgL = parseFloat(tiles[i].img.style.left);
+                var imgT = parseFloat(tiles[i].img.style.top);
+                var toX = Math.round((imgL - rack0X) / cellW);
+                var toY = Math.round((imgT - rack0Y) / cellH);
 
                 if (toX < 0) {toX = 0;}
                 if (toY < 0) {toY = 0;}
@@ -312,12 +312,12 @@ window.onload = function() {
                 }
             }.bind(null, i);
         var onstop = function(i) {
-                var fromX = tiles[i].x,
-                    fromY = tiles[i].y,
-                    toX = Math.round(
-                        (parseFloat(tiles[i].img.style.left) - rack0X) / cellW),
-                    toY = Math.round(
-                        (parseFloat(tiles[i].img.style.top) - rack0Y) / cellH);
+                var fromX = tiles[i].x;
+                var fromY = tiles[i].y;
+                var imgL = parseFloat(tiles[i].img.style.left);
+                var imgT = parseFloat(tiles[i].img.style.top);
+                var toX = Math.round((imgL - rack0X) / cellW);
+                var toY = Math.round((imgT - rack0Y) / cellH);
                 if (toX < 0) {toX = 0;}
                 if (toY < 0) {toY = 0;}
                 if (toX >= ltrNum) {toX = ltrNum - 1;}
