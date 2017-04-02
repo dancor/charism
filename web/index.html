@@ -3,7 +3,7 @@
 <title>charism</title>
 <style>
 body {
-  background: #adf;
+  background: #8bf;
   -webkit-user-select: none;
      -moz-user-select: -moz-none;
       -ms-user-select: none;
@@ -37,6 +37,9 @@ var rackInterSpaceX = 8;
 var rackInterSpaceY = 8;
 var rackLtrW = 64;
 var rackLtrH = 64;
+
+var cellW = rack0LtrW + rack0InterSpaceX;
+var cellH = rack0LtrH + rack0InterSpaceY;
 
 var wdsX = rackX;
 var wdsY = rackY + rackLtrH + rackInterSpaceY;
@@ -178,11 +181,6 @@ function rackEndToBag() {
         }
     }
 }
-var curDown = false;
-function mousedown(whichRack, rackPos) {
-    curDown = [whichRack, rackPos];
-    return false;
-}
 window.onload = function() {
     tooltip = document.getElementById("tooltip");
     helpBox = document.getElementById("help");
@@ -215,25 +213,58 @@ window.onload = function() {
     }
 
     wdsRaw = pickWords();
-    rack[0] = createLtrs(rack0X, rack0Y, rack0LtrW, rack0LtrH, rack0InterSpaceX,
+    createLtrs(rack0X, rack0Y, rack0LtrW, rack0LtrH, rack0InterSpaceX,
         replicate(ltrNum, "_"));
-    rack[1] = createLtrs(rackX, rackY, rackLtrW, rackLtrH, rackInterSpaceX,
+    createLtrs(rackX, rackY, rackLtrW, rackLtrH, rackInterSpaceX,
         replicate(ltrNum, unchosenLtr));
+    var shuffledLtrs = shuffle(strToArr(last(wdsRaw)));
+    rack = [shuffledLtrs, replicate(ltrNum, unchosenLtr)];
     tiles = createLtrs(rack0X, rack0Y, rack0LtrW, rack0LtrH, rack0InterSpaceX,
-        shuffle(strToArr(last(wdsRaw))));
+        shuffledLtrs);
     for (var i = 0; i < ltrNum; i++) {
-        rack[0][i].img.onmousedown = mousedown.bind(null, 0, i);
-        rack[0][i].img.onmouseup = mouseup.bind(null, 0, i);
-        rack[1][i].img.onmousedown = mousedown.bind(null, 1, i);
-        rack[1][i].img.onmouseup = mouseup.bind(null, 1, i);
         tiles[i].img.id = "t" + i;
         tiles[i].x = i;
         tiles[i].y = 0;
-        var onstop = function(i, e, ui) {
+        var onstart = function(i) {
+                tiles[i].img.style.zIndex = 100;
+            }.bind(null, i);
+        var ondrag = function(i) {
                 var fromX = tiles[i].x,
                     fromY = tiles[i].y,
-                    cellW = rack0LtrW + rack0InterSpaceX,
-                    cellH = rack0LtrH + rack0InterSpaceY,
+                    imgL = parseFloat(tiles[i].img.style.left),
+                    imgT = parseFloat(tiles[i].img.style.top),
+                    toX = Math.round((imgL - rack0X) / cellW),
+                    toY = Math.round((imgT - rack0Y) / cellH);
+                if (toX < 0) {toX = 0;}
+                if (toY < 0) {toY = 0;}
+                if (toX >= ltrNum) {toX = ltrNum - 1;}
+                if (toY > 1) {toY = 1;}
+                if ((fromX != toX || fromY != toY) && 
+                        rack[toY][toX] != unchosenLtr) {
+                    // try to push right
+                    
+                    // swap
+                    tmp = rack[fromY][fromX];
+                    rack[fromY][fromX] = rack[toY][toX];
+                    rack[toY][toX] = tmp;
+                    for (var tileI = 0; tileI < ltrNum; tileI++) {
+                        if (tiles[tileI].x == toX && tiles[tileI].y == toY) {
+                            tiles[tileI].x = fromX;
+                            tiles[tileI].y = fromY;
+                            tiles[tileI].img.style.left =
+                                fromX * cellW + rack0X;
+                            tiles[tileI].img.style.top =
+                                fromY * cellH + rack0Y;
+                            break;
+                        }
+                    }
+                    tiles[i].x = toX;
+                    tiles[i].y = toY;
+                }
+            }.bind(null, i);
+        var onstop = function(i) {
+                var fromX = tiles[i].x,
+                    fromY = tiles[i].y,
                     toX = Math.round(
                         (parseFloat(tiles[i].img.style.left) - rack0X) / cellW),
                     toY = Math.round(
@@ -242,10 +273,31 @@ window.onload = function() {
                 if (toY < 0) {toY = 0;}
                 if (toX >= ltrNum) {toX = ltrNum - 1;}
                 if (toY > 1) {toY = 1;}
+                tmp = rack[fromY][fromX];
+                rack[fromY][fromX] = rack[toY][toX];
+                rack[toY][toX] = tmp;
+                for (var tileI = 0; tileI < ltrNum; tileI++) {
+                    if (tiles[tileI].x == toX && tiles[tileI].y == toY) {
+                        tiles[tileI].x = fromX;
+                        tiles[tileI].y = fromY;
+                        tiles[tileI].img.style.left =
+                            fromX * cellW + rack0X;
+                        tiles[tileI].img.style.top =
+                            fromY * cellH + rack0Y;
+                        break;
+                    }
+                }
+                tiles[i].x = toX;
+                tiles[i].y = toY;
+
+                tiles[i].img.style.zIndex = 1;
                 tiles[i].img.style.left = toX * cellW + rack0X;
                 tiles[i].img.style.top = toY * cellH + rack0Y;
+                checkIfGotWd();
             }.bind(null, i);
         $("#t" + i).draggable({
+            start: onstart,
+            drag: ondrag,
             stop: onstop
         });
     }
@@ -326,10 +378,12 @@ window.onload = function() {
     function checkIfGotWd() {
         var rackWd = "";
         for (var i = 0; i < ltrNum; i++) {
-            if (rack[1][i].c != unchosenLtr) {
-                rackWd += rack[1][i].c;
+            if (rack[1][i] != unchosenLtr) {
+                rackWd += rack[1][i];
             }
         }
+        console.log(rack[0]);
+        console.log(rack[1]);
         for (var i = 0; i < wds.length; i++) {
             if (wds[i].wd == rackWd) {
                 wds[i].got = true;
@@ -339,6 +393,7 @@ window.onload = function() {
             }
         }
     }
+    /*
     function mouseup(whichRack, rackPos) {
         if (curDown) {
             var c = rack[curDown[0]][curDown[1]].c;
@@ -349,10 +404,11 @@ window.onload = function() {
         checkIfGotWd();
         return false;
     }
+    */
     function keydown(e) {
         //var i = e.keyCode % 128;
         var i = e.keyCode;
-        console.log(i);
+        //console.log(i);
         if (i >= 65 && i <= 90) {
             var c = chr(i).toLowerCase();
             for (var i = 0; i < ltrNum; i++) {
