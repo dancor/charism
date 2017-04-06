@@ -9,12 +9,14 @@ body {
       -ms-user-select: none;
           user-select: none;
 }
+html, body {
+      overflow:hidden;
+}
 </style>
 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-
-<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
-<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<script src="http://code.jquery.com/jquery-1.7.2.min.js"></script>
+<script src="http://code.jquery.com/ui/1.8.21/jquery-ui.min.js"></script>
+<script src="jquery.ui.touch-punch.min.js"></script>
 
 <script type="text/javascript" src="pickWords.js" charset="utf-8"></script>
 <script type="text/javascript">
@@ -54,6 +56,7 @@ var wdsRowNum = 0;
 var showSwap = false;
 
 var rack = [];
+var tiles = [];
 /*
 var lang = "en";
 var langParam = getParam("lang");
@@ -154,34 +157,48 @@ function updateLtrs(ltrs, x, y, ltrW, ltrH, interSpaceW, cs) {
         updateLtr(ltrs[i], x + i * (ltrW + interSpaceW), y, ltrW, ltrH, cs[i]);
     }
 }
-function ltrsToCs(ltrs) {
-    var r = [];
-    for (var i = 0; i < ltrs.length; i++) {
-        r[i] = ltrs[i].c;
-    }
-    return r;
-}
-function rack0ToRack(rack0I) {
-    for (var rackI = 0; rackI <= ltrNum; rackI++) {
-        if (rack[1][rackI].c == noLtr) {
-            ltrSetC(rack[1][rackI], rack[0][rack0I].c);
+function moveTile(srcX, srcY, dstX, dstY) {
+    tmp = rack[dstY][dstX];
+    rack[dstY][dstX] = rack[srcY][srcX];
+    rack[srcY][srcX] = tmp;
+    for (var tileI = 0; tileI < ltrNum; tileI++) {
+        if (tiles[tileI].x == srcX && tiles[tileI].y == srcY) {
+            tiles[tileI].x = dstX;
+            tiles[tileI].y = dstY;
+            tiles[tileI].img.style.left =
+                dstX * cellW + rack0X;
+            tiles[tileI].img.style.top =
+                dstY * cellH + rack0Y;
             break;
         }
     }
-    ltrSetC(rack[0][rack0I], noLtr);
 }
-function rackToBag(rackI) {
-    putInFirstEmpty(rack[0], rack[1][rackI].c);
-    ltrSetC(rack[1][rackI], noLtr);
-}
-function rackEndToBag() {
-    for (var rackI = 0; rackI < rack[1].length; rackI++) {
-        if (rack[1][rackI].c != noLtr) {
-            rackToBag(rackI);
-        }
+function swapTiles(srcX, srcY, dstX, dstY) {
+    tmp = rack[dstY][dstX];
+    rack[dstY][dstX] = rack[srcY][srcX];
+    rack[srcY][srcX] = tmp;
+    var srcI = -1, dstI = -1;
+    for (var i = 0; i < ltrNum; i++) {
+        if (tiles[i].x == srcX && tiles[i].y == srcY) {srcI = i;}
+        else if (tiles[i].x == dstX && tiles[i].y == dstY) {dstI = i;}
+    }
+    if (srcI != -1) {
+        tiles[srcI].x = dstX;
+        tiles[srcI].y = dstY;
+        tiles[srcI].img.style.left = dstX * cellW + rack0X;
+        tiles[srcI].img.style.top = dstY * cellH + rack0Y;
+    }
+    if (dstI != -1) {
+        tiles[dstI].x = srcX;
+        tiles[dstI].y = srcY;
+        tiles[dstI].img.style.left = srcX * cellW + rack0X;
+        tiles[dstI].img.style.top = srcY * cellH + rack0Y;
     }
 }
+
 window.onload = function() {
+	//$(window).bind('touchmove', function(e) {e.preventDefault();});
+
     tooltip = document.getElementById("tooltip");
     helpBox = document.getElementById("help");
     helpBox.onclick = function() {
@@ -231,22 +248,6 @@ window.onload = function() {
     rack = [shuffledLtrs, replicate(ltrNum, noLtr)];
     tiles = createLtrs(rack0X, rack0Y, rack0LtrW, rack0LtrH, rack0InterSpaceX,
         shuffledLtrs);
-    function moveTile(srcX, srcY, dstX, dstY) {
-        tmp = rack[dstY][dstX];
-        rack[dstY][dstX] = rack[srcY][srcX];
-        rack[srcY][srcX] = tmp;
-        for (var tileI = 0; tileI < ltrNum; tileI++) {
-            if (tiles[tileI].x == srcX && tiles[tileI].y == srcY) {
-                tiles[tileI].x = dstX;
-                tiles[tileI].y = dstY;
-                tiles[tileI].img.style.left =
-                    dstX * cellW + rack0X;
-                tiles[tileI].img.style.top =
-                    dstY * cellH + rack0Y;
-                break;
-            }
-        }
-    }
     for (var i = 0; i < ltrNum; i++) {
         tiles[i].img.id = "t" + i;
         tiles[i].x = i;
@@ -375,7 +376,7 @@ window.onload = function() {
             wds[i].ltrs[j].img.onmousedown = function(wd){
                 window.open(
                     //"https://en.wiktionary.org/wiki/" + wd + "#Spanish",
-                    "http://localhost:3000/A/" + wd + ".html",
+                    "http://localhost:3000/A/" + wd + ".html#Spanish",
                     "_blank");
                 return false;
             }.bind(null, wdsRaw[i]);
@@ -442,62 +443,63 @@ window.onload = function() {
                 rackWd += rack[1][i];
             }
         }
-        //console.log(rack[0]);
-        //console.log(rack[1]);
         for (var i = 0; i < wds.length; i++) {
             if (wds[i].wd == rackWd) {
                 wds[i].got = true;
-                //rackEndToBag();
                 resize();
                 break;
             }
         }
     }
+    function handleBackspace() {
+        for (var i = ltrNum - 1; i >= 0; i--) {
+            if (rack[1][i] != noLtr) {
+                for (var j = 0; j < ltrNum; j++) {
+                    if (rack[0][j] == noLtr) {
+                        moveTile(i, 1, j, 0);
+                        break;
+                    }
+                }
+                checkIfGotWd();
+                break;
+            }
+        }
+    }
     function keydown(e) {
-        var i = e.keyCode;
-        if (i % 128 == 63) {
+        var key = e.keyCode % 128;
+        if (key == 63) {
             showSwap = !showSwap;
             resize();
-        }
-    /*
-        //var i = e.keyCode % 128;
-        //console.log(i);
-        if (i >= 65 && i <= 90) {
-            var c = chr(i).toLowerCase();
+        } else if (key >= 65 && key <= 90) {
+            var c = chr(key).toLowerCase();
             for (var i = 0; i < ltrNum; i++) {
-                if (rack[0][i].c == c) {
-                    rack0ToRack(i);
+                if (rack[0][i] == c) {
+                    for (var j = 0; j < ltrNum; j++) {
+                        if (rack[1][j] == noLtr) {
+                            moveTile(i, 0, j, 1);
+                            break;
+                        }
+                    }
+                    checkIfGotWd();
                     break;
                 }
             }
-            checkIfGotWd();
-        } else if (i == 8 || i == 92) { // backspace, delete
-            for (var i = ltrNum - 1; i >= 0; i--) {
-                if (rack[1][i].c != noLtr) {
-                    putInFirstEmpty(rack[0], rack[1][i].c);
-                    ltrSetC(rack[1][i], noLtr);
-                    break;
-                }
+        } else if (key == 8 || key == 92) { // backspace, delete
+            handleBackspace();
+        } else if (key == 27) { // escape to clear rack
+            for (var i = 0; i < ltrNum; i++) {
+                handleBackspace();
             }
-        } else if (i == 32) { // spacebar to shuffle
-            updateLtrs(rack[0], rack0X, rack0Y, rack0LtrW, rack0LtrH,
-                rack0InterSpaceX,
-                arrToStr(shuffle(strToArr(ltrsToCs(rack[0])))));
-        } else if (i == 13) { // enter
-            //checkForWd();
-        } else if (i == 27) { // escape to clear rack
-            rackEndToBag();
-        } else if (i % 128 == 63) {
-            showSwap = !showSwap;
-            resize();
-        } else {
-            //console.log(i);
+        } else if (key == 32) { // spacebar to shuffle
+            for (var i = ltrNum - 1; i > 0; i--) {
+                swapTiles(Math.floor(Math.random() * (i + 1)), 0, i, 0);
+            }
         }
-    */
         return false;
     }
     window.addEventListener("resize", resize, true);
     window.addEventListener("keydown", keydown, true);
+    /*
     tooltipify(helpBox, "<b>Use the keyboard to make words:<br>" +
 "- Type letters to move letters to your working rack.<br>" + 
 "- Press backspace or \\ to move one letter off your working rack.<br>" +
@@ -507,6 +509,7 @@ window.onload = function() {
 "- Pless ? to show words you haven't gotten.<br>" +
 "- Hover over words to see definitions.<br>" +
 "- Reload the page (ctrl+r) to play another round.</b>");
+    */
     resize();
 };
 </script>

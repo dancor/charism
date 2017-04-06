@@ -38,12 +38,17 @@ _ `subseq` [] = False
 
 main :: IO ()
 main = do
+    commonWds <- HS.fromList .
+        map (DT.takeWhile (/= '\t')) .
+        DT.lines <$> DTI.readFile "/home/danl/p/l/melang/lang/es/dict-10k.txt"
     shortWds <- map (first DT.unpack) . HMS.toList . HMS.fromListWith (++) .
         map (\w -> (DT.pack . sort $ DT.unpack w, [w])) .
+        filter (`HS.member` commonWds) .
         DT.lines <$> DTI.readFile "/home/danl/data/enwikt-es-wds-3-to-6.txt"
     sevLtrWds <- map (first DT.unpack . second sort) . HMS.toList .
         HMS.fromListWith (++) .
         map (\w -> (DT.pack . sort $ DT.unpack w, [w])) .
+        filter (`HS.member` commonWds) .
         DT.lines <$> DTI.readFile "/home/danl/data/enwikt-es-wds-7.txt"
     let computeShorts ltrs = sortBy (comparing DT.length <> compare) $ concat
             [wds | (shortLtrs, wds) <- shortWds, shortLtrs `subseq` ltrs]
