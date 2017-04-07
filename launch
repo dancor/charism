@@ -1,0 +1,4 @@
+#!/bin/sh
+set -e
+rsync -av web/ p:www/charism
+ssh p sudo rsync -av www/charism /var/www/html
