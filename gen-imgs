@@ -21,5 +21,23 @@ mv wtf.png @.png
 convert -size 32x32 xc:transparent -fill yellow -stroke orange \
     -draw "roundrectangle 0,0 31,31 10,15" \
     -fill black -stroke none \
-    -gravity South -pointsize 18 -annotate +1+4 '???' help.png
+    -gravity South -pointsize 16 -annotate +1+4 '???' help.png
 #convert -size 32x32 xc:Green -gravity South -pointsize 18 -annotate 0 '✔' ✔.png
+
+convert -size 32x32 xc:transparent -fill yellow -stroke orange \
+    -draw "roundrectangle 0,0 31,31 10,15" \
+    -fill black -stroke none \
+    -font /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf \
+    -gravity Center -pointsize 18 -annotate 270 '⇶' allup.png
+
+convert -size 32x32 xc:transparent -fill yellow -stroke orange \
+    -draw "roundrectangle 0,0 31,31 10,15" \
+    -fill black -stroke none \
+    -font /usr/share/fonts/truetype/ancient-scripts/Symbola_hint.ttf \
+    -gravity Center -pointsize 18 -annotate +1+1 '🔀' shuffle.png
+
+convert -size 32x32 xc:transparent -fill yellow -stroke orange \
+    -draw "roundrectangle 0,0 31,31 10,15" \
+    -fill black -stroke none \
+    -font /usr/share/fonts/truetype/ancient-scripts/Symbola_hint.ttf \
+    -gravity Center -pointsize 18 -annotate +1+1 '⟲' new.png

@@ -36,28 +36,49 @@ subseq :: Eq a => [a] -> [a] -> Bool
 _ `subseq` [] = False
 (x:xs) `subseq` (y:ys) = if x == y then xs `subseq` ys else (x:xs) `subseq` ys
 
+parseDictLine :: DT.Text -> (DT.Text, DT.Text)
+parseDictLine l = (wd, DT.replace "verb form of: " "" def)
+  where
+    (wd, tabAndRest) = DT.break (== '\t') l
+    def = DT.takeWhile (/= '\t') $ DT.tail tabAndRest
+
+charIsGood :: Char -> Bool
+charIsGood c =
+    i >= ord 'a' && i <= ord 'z' || 
+    i `elem` [ord 'á', ord 'é', ord 'í', ord 'ó', ord 'ú', ord 'ü', ord 'ñ']
+  where
+    i = ord c
+
+dictLineIsGood :: (DT.Text, DT.Text) -> Bool
+dictLineIsGood (_, "???") = False
+dictLineIsGood (wd, _) =
+    l >= 3 && l <= 7 && DT.all charIsGood wd
+  where
+    l = DT.length wd
+
 main :: IO ()
 main = do
-    commonWds <- HS.fromList .
-        map (DT.takeWhile (/= '\t')) .
-        DT.lines <$> DTI.readFile "/home/danl/p/l/melang/lang/es/dict-10k.txt"
-    shortWds <- map (first DT.unpack) . HMS.toList . HMS.fromListWith (++) .
-        map (\w -> (DT.pack . sort $ DT.unpack w, [w])) .
-        filter (`HS.member` commonWds) .
-        DT.lines <$> DTI.readFile "/home/danl/data/enwikt-es-wds-3-to-6.txt"
-    sevLtrWds <- map (first DT.unpack . second sort) . HMS.toList .
-        HMS.fromListWith (++) .
-        map (\w -> (DT.pack . sort $ DT.unpack w, [w])) .
-        filter (`HS.member` commonWds) .
-        DT.lines <$> DTI.readFile "/home/danl/data/enwikt-es-wds-7.txt"
+    dict <- HMS.fromList . take 20000 . filter dictLineIsGood .
+        map parseDictLine . DT.lines <$> 
+        DTI.readFile "/home/danl/p/l/melang/lang/es/dict-100k.txt"
+    let wds = HMS.keys dict
+        (shortWdsRaw, fullWdsRaw) = partition ((< 7) . DT.length) wds
+        shortWds = map (first DT.unpack) . HMS.toList . HMS.fromListWith (++) $
+            map (\w -> (DT.pack . sort $ DT.unpack w, [w])) shortWdsRaw
+        fullWds = map (first DT.unpack . second sort) . HMS.toList .
+            HMS.fromListWith (++) $
+            map (\w -> (DT.pack . sort $ DT.unpack w, [w])) fullWdsRaw
     let computeShorts ltrs = sortBy (comparing DT.length <> compare) $ concat
             [wds | (shortLtrs, wds) <- shortWds, shortLtrs `subseq` ltrs]
         myShow = DT.intercalate "," . map (\w -> "\"" <> w <> "\"")
-    DTI.putStrLn . (\x -> "var lolPickWordsArr=[" <> x <>
+    DTI.writeFile "web/pickWords.js" . (\x -> "var lolPickWordsArr=[" <> x <>
         "];function pickWords(){return lolPickWordsArr[" <>
         "Math.floor(Math.random()*lolPickWordsArr.length)];}") . 
         DT.intercalate "," . map (\l -> "[" <> l <> "]") $
-        map (\(a,b) -> myShow $ computeShorts a ++ b) sevLtrWds
+        map (\(a,b) -> myShow $ computeShorts a ++ b) fullWds
+    DTI.writeFile "web/wordDefs.js" . (\x -> "var wordDefs={" <> x <> "};") $
+        DT.concat
+        [wd <> ":\"" <> def <> "\"," | (wd, def) <- HMS.toList dict]
 
 --allRacks = 
 

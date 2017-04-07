@@ -19,6 +19,7 @@ html, body {
 <script src="jquery.ui.touch-punch.min.js"></script>
 
 <script type="text/javascript" src="pickWords.js" charset="utf-8"></script>
+<script type="text/javascript" src="wordDefs.js" charset="utf-8"></script>
 <script type="text/javascript">
 var noLtr = "@";
 
@@ -116,15 +117,27 @@ function getParam(name) {
     }
 }
 */
-function createLtr(x, y, ltrW, ltrH, c) {
+function killLtrs(xs) {
+    for (var i = 0; i < xs.length; i++) {
+        killElement(xs[i].img);
+    }
+}
+function killElement(x) {
+    return x.parentNode.removeChild(x);
+}
+function createImg(x, y, w, h, src) {
     var img = document.createElement("img");
-    img.src = "img/" + c + ".png";
-    img.width = ltrW;
-    img.height = ltrH;
+    img.src = src;
+    img.width = w;
+    img.height = h;
     img.style.position = "absolute";
     img.style.left = x;
     img.style.top = y;
     document.body.appendChild(img);
+    return img;
+}
+function createLtr(x, y, w, h, c) {
+    var img = createImg(x, y, w, h, "img/" + c + ".png");
     return {c: c, img: img};
 }
 function createLtrs(x, y, ltrW, ltrH, interSpaceW, cs, tooltip) {
@@ -201,6 +214,11 @@ window.onload = function() {
 
     tooltip = document.getElementById("tooltip");
     helpBox = document.getElementById("help");
+    newRound = document.getElementById("new");
+    helpBox.style.position = 'absolute';
+    newRound.style.position = 'absolute';
+    helpBox.style.top = 8;
+    newRound.style.top = 72;
     helpBox.onclick = function() {
         showSwap = !showSwap;
         resize();
@@ -210,6 +228,16 @@ window.onload = function() {
         lang = "de";
     }
     */
+    function doShuffle() {
+        for (var i = ltrNum - 1; i > 0; i--) {
+            swapTiles(Math.floor(Math.random() * (i + 1)), 0, i, 0);
+        }
+    }
+    function doClearRack() {
+        for (var i = 0; i < ltrNum; i++) {
+            handleBackspace();
+        }
+    }
     function showTooltip(x, y, content) {
         tooltip.style.left = 0;
         tooltip.style.top = 0;
@@ -233,154 +261,172 @@ window.onload = function() {
             tooltip.style.visibility = "hidden";}, true);
     }
 
-    wdsRaw = pickWords();
     tmp = createLtrs(rack0X, rack0Y, rack0LtrW, rack0LtrH, rack0InterSpaceX,
         replicate(ltrNum, "_"));
     for (i = 0; i < ltrNum; i++) {
         tmp[i].img.onmousedown = function(){return false;}
     }
+    createImg(rackX + ltrNum * (rack0LtrW + rack0InterSpaceX), 
+        rack0Y, wdsLtrW, wdsLtrH, "img/shuffle.png").onclick = doShuffle;
+    createImg(rackX + ltrNum * (rack0LtrW + rack0InterSpaceX), 
+        rackY, wdsLtrW, wdsLtrH, "img/allup.png").onclick = doClearRack;
     tmp = createLtrs(rackX, rackY, rackLtrW, rackLtrH, rackInterSpaceX,
         replicate(ltrNum, noLtr));
     for (i = 0; i < ltrNum; i++) {
         tmp[i].img.onmousedown = function(){return false;}
     }
-    var shuffledLtrs = shuffle(strToArr(last(wdsRaw)));
-    rack = [shuffledLtrs, replicate(ltrNum, noLtr)];
-    tiles = createLtrs(rack0X, rack0Y, rack0LtrW, rack0LtrH, rack0InterSpaceX,
-        shuffledLtrs);
-    for (var i = 0; i < ltrNum; i++) {
-        tiles[i].img.id = "t" + i;
-        tiles[i].x = i;
-        tiles[i].y = 0;
-        var onstart = function(i) {
-                tiles[i].img.style.zIndex = 100;
-            }.bind(null, i);
-        var ondrag = function(i) {
-                var fromX = tiles[i].x;
-                var fromY = tiles[i].y;
-                var imgL = parseFloat(tiles[i].img.style.left);
-                var imgT = parseFloat(tiles[i].img.style.top);
-                var toX = Math.round((imgL - rack0X) / cellW);
-                var toY = Math.round((imgT - rack0Y) / cellH);
+    function doPickWords() {
+        wdsRaw = pickWords();
+        var shuffledLtrs = shuffle(strToArr(last(wdsRaw)));
+        rack = [shuffledLtrs, replicate(ltrNum, noLtr)];
+        tiles = createLtrs(rack0X, rack0Y, rack0LtrW, rack0LtrH,
+            rack0InterSpaceX, shuffledLtrs);
+        for (var i = 0; i < ltrNum; i++) {
+            tiles[i].img.id = "t" + i;
+            tiles[i].x = i;
+            tiles[i].y = 0;
+            var onstart = function(i) {
+                    tiles[i].img.style.zIndex = 100;
+                }.bind(null, i);
+            var ondrag = function(i) {
+                    var fromX = tiles[i].x;
+                    var fromY = tiles[i].y;
+                    var imgL = parseFloat(tiles[i].img.style.left);
+                    var imgT = parseFloat(tiles[i].img.style.top);
+                    var toX = Math.round((imgL - rack0X) / cellW);
+                    var toY = Math.round((imgT - rack0Y) / cellH);
 
-                if (toX < 0) {return;}
-                if (toY < 0) {return;}
-                if (toX >= ltrNum) {return;}
-                if (toY > 1) {return;}
+                    if (toX < 0) {return;}
+                    if (toY < 0) {return;}
+                    if (toX >= ltrNum) {return;}
+                    if (toY > 1) {return;}
 
-                function tryPushRight() {
-                    var foundOpenX = false;
-                    for (var openX = toX + 1; openX < ltrNum; openX++) {
-                        if (rack[toY][openX] == noLtr) {
-                            foundOpenX = true;
+                    function tryPushRight() {
+                        var foundOpenX = false;
+                        for (var openX = toX + 1; openX < ltrNum; openX++) {
+                            if (rack[toY][openX] == noLtr) {
+                                foundOpenX = true;
+                                break;
+                            }
+                        }
+                        if (foundOpenX) {
+                            for (var swapX = openX; swapX > toX; swapX--) {
+                                moveTile(swapX - 1, toY, swapX, toY);
+                            }
+                            return true;
+                        }
+                        return false;
+                    }
+                    function tryPushLeft() {
+                        var foundOpenX = false;
+                        for (var openX = toX - 1; openX >= 0; openX--) {
+                            if (rack[toY][openX] == noLtr) {
+                                foundOpenX = true;
+                                break;
+                            }
+                        }
+                        if (foundOpenX) {
+                            for (var swapX = openX; swapX < toX; swapX++) {
+                                moveTile(swapX + 1, toY, swapX, toY);
+                            }
+                            return true;
+                        }
+                        return false;
+                    }
+
+                    if ((fromX != toX || fromY != toY) && 
+                            rack[toY][toX] != noLtr) {
+                        if (imgL <= (toX - 0.5) * cellW + rack0X) {
+                            if (tryPushRight()) {
+                                return;
+                            } else if (tryPushLeft()) {
+                                return;
+                            }
+                        } else {
+                            if (tryPushLeft()) {
+                                return;
+                            } else if (tryPushRight()) {
+                                return;
+                            }
+                        }
+                        // swap
+                        moveTile(toX, toY, fromX, fromY);
+                        tiles[i].x = toX;
+                        tiles[i].y = toY;
+                    }
+                }.bind(null, i);
+            var onstop = function(i) {
+                    var fromX = tiles[i].x;
+                    var fromY = tiles[i].y;
+                    var imgL = parseFloat(tiles[i].img.style.left);
+                    var imgT = parseFloat(tiles[i].img.style.top);
+                    var toX = Math.round((imgL - rack0X) / cellW);
+                    var toY = Math.round((imgT - rack0Y) / cellH);
+                    if (toX < 0) {toX = 0;}
+                    if (toY < 0) {toY = 0;}
+                    if (toX >= ltrNum) {toX = ltrNum - 1;}
+                    if (toY > 1) {toY = 1;}
+                    tmp = rack[fromY][fromX];
+                    rack[fromY][fromX] = rack[toY][toX];
+                    rack[toY][toX] = tmp;
+                    for (var tileI = 0; tileI < ltrNum; tileI++) {
+                        if (tiles[tileI].x == toX && tiles[tileI].y == toY) {
+                            tiles[tileI].x = fromX;
+                            tiles[tileI].y = fromY;
+                            tiles[tileI].img.style.left =
+                                fromX * cellW + rack0X;
+                            tiles[tileI].img.style.top =
+                                fromY * cellH + rack0Y;
                             break;
                         }
                     }
-                    if (foundOpenX) {
-                        for (var swapX = openX; swapX > toX; swapX--) {
-                            moveTile(swapX - 1, toY, swapX, toY);
-                        }
-                        return true;
-                    }
-                    return false;
-                }
-                function tryPushLeft() {
-                    var foundOpenX = false;
-                    for (var openX = toX - 1; openX >= 0; openX--) {
-                        if (rack[toY][openX] == noLtr) {
-                            foundOpenX = true;
-                            break;
-                        }
-                    }
-                    if (foundOpenX) {
-                        for (var swapX = openX; swapX < toX; swapX++) {
-                            moveTile(swapX + 1, toY, swapX, toY);
-                        }
-                        return true;
-                    }
-                    return false;
-                }
-
-                if ((fromX != toX || fromY != toY) && 
-                        rack[toY][toX] != noLtr) {
-                    if (imgL <= (toX - 0.5) * cellW + rack0X) {
-                        if (tryPushRight()) {
-                            return;
-                        } else if (tryPushLeft()) {
-                            return;
-                        }
-                    } else {
-                        if (tryPushLeft()) {
-                            return;
-                        } else if (tryPushRight()) {
-                            return;
-                        }
-                    }
-                    // swap
-                    moveTile(toX, toY, fromX, fromY);
                     tiles[i].x = toX;
                     tiles[i].y = toY;
-                }
-            }.bind(null, i);
-        var onstop = function(i) {
-                var fromX = tiles[i].x;
-                var fromY = tiles[i].y;
-                var imgL = parseFloat(tiles[i].img.style.left);
-                var imgT = parseFloat(tiles[i].img.style.top);
-                var toX = Math.round((imgL - rack0X) / cellW);
-                var toY = Math.round((imgT - rack0Y) / cellH);
-                if (toX < 0) {toX = 0;}
-                if (toY < 0) {toY = 0;}
-                if (toX >= ltrNum) {toX = ltrNum - 1;}
-                if (toY > 1) {toY = 1;}
-                tmp = rack[fromY][fromX];
-                rack[fromY][fromX] = rack[toY][toX];
-                rack[toY][toX] = tmp;
-                for (var tileI = 0; tileI < ltrNum; tileI++) {
-                    if (tiles[tileI].x == toX && tiles[tileI].y == toY) {
-                        tiles[tileI].x = fromX;
-                        tiles[tileI].y = fromY;
-                        tiles[tileI].img.style.left =
-                            fromX * cellW + rack0X;
-                        tiles[tileI].img.style.top =
-                            fromY * cellH + rack0Y;
-                        break;
-                    }
-                }
-                tiles[i].x = toX;
-                tiles[i].y = toY;
 
-                tiles[i].img.style.zIndex = 1;
-                tiles[i].img.style.left = toX * cellW + rack0X;
-                tiles[i].img.style.top = toY * cellH + rack0Y;
-                checkIfGotWd();
-            }.bind(null, i);
-        $("#t" + i).draggable({
-            start: onstart,
-            drag: ondrag,
-            stop: onstop
-        });
-    }
-    wds = [];
-    for (var i = 0; i < wdsRaw.length; i++) {
-        var def = "loldef";
-        wds[i] = {
-            ltrs: createLtrs(wdsX, wdsY + i * (wdsLtrH + wdsInterSpaceY), 
-                wdsLtrW, wdsLtrH, wdsInterSpaceX, wdsRaw[i]),
-            wd: wdsRaw[i],
-            got: false,
-            def: def
-            };
-        for (var j = 0; j < wdsRaw[i].length; j++) {
-            tooltipify(wds[i].ltrs[j].img, "<b>" + def + "</b>");
-            wds[i].ltrs[j].img.onmousedown = function(wd){
-                window.open(
-                    //"https://en.wiktionary.org/wiki/" + wd + "#Spanish",
-                    "http://localhost:3000/A/" + wd + ".html#Spanish",
-                    "_blank");
-                return false;
-            }.bind(null, wdsRaw[i]);
+                    tiles[i].img.style.zIndex = 1;
+                    tiles[i].img.style.left = toX * cellW + rack0X;
+                    tiles[i].img.style.top = toY * cellH + rack0Y;
+                    checkIfGotWd();
+                }.bind(null, i);
+            $("#t" + i).draggable({
+                start: onstart,
+                drag: ondrag,
+                stop: onstop
+            });
         }
+        wds = [];
+        for (var i = 0; i < wdsRaw.length; i++) {
+            var def = wordDefs[wdsRaw[i]];
+            wds[i] = {
+                ltrs: createLtrs(wdsX, wdsY + i * (wdsLtrH + wdsInterSpaceY), 
+                    wdsLtrW, wdsLtrH, wdsInterSpaceX, wdsRaw[i]),
+                wd: wdsRaw[i],
+                got: false,
+                def: def
+                };
+            for (var j = 0; j < wdsRaw[i].length; j++) {
+                tooltipify(wds[i].ltrs[j].img, "<b>" + def + "</b>");
+                /*
+                wds[i].ltrs[j].img.onmousedown = function(wd){
+                    window.open(
+                        //"https://en.wiktionary.org/wiki/" + wd + "#Spanish",
+                        "http://localhost:3000/A/" + wd + ".html#Spanish",
+                        "_blank");
+                    return false;
+                }.bind(null, wdsRaw[i]);
+                */
+            }
+        }
+    }
+    doPickWords();
+    newRound.onclick = function() {
+        killLtrs(tiles);
+        for (var i = 0; i < wds.length; i++) {
+            killLtrs(wds[i].ltrs);
+        }
+        showSwap = false;
+        doPickWords();
+        resize();
     }
     function resize() {
         var x = wdsX;
@@ -391,8 +437,8 @@ window.onload = function() {
             var tooBig = false;
             for (var i = 0; i < wds.length; i++) {
                 var wdL = wds[i].wd.length;
-                if (x + wdL * (wdsLtrWCur + wdsInterSpaceX) - wdsInterSpaceX + 8 >= 
-                        window.innerWidth) {
+                if (x + wdL * (wdsLtrWCur + wdsInterSpaceX) - 
+                        wdsInterSpaceX + 8 >= window.innerWidth) {
                     tooBig = true;
                     break;
                 }
@@ -435,6 +481,8 @@ window.onload = function() {
                 y = wdsY;
             }
         }
+        helpBox.style.left = window.innerWidth - 44;
+        newRound.style.left = window.innerWidth - 44;
     }
     function checkIfGotWd() {
         var rackWd = "";
@@ -487,13 +535,9 @@ window.onload = function() {
         } else if (key == 8 || key == 92) { // backspace, delete
             handleBackspace();
         } else if (key == 27) { // escape to clear rack
-            for (var i = 0; i < ltrNum; i++) {
-                handleBackspace();
-            }
+            doClearRack();
         } else if (key == 32) { // spacebar to shuffle
-            for (var i = ltrNum - 1; i > 0; i--) {
-                swapTiles(Math.floor(Math.random() * (i + 1)), 0, i, 0);
-            }
+            doShuffle();
         }
         return false;
     }
@@ -516,6 +560,9 @@ window.onload = function() {
 </head>
 <body>
 <img id="help" src="img/help.png" align="right"/>
+<br>
+<br>
+<img id="new" src="img/new.png" align="right"/>
 <!-- todo: tooltip on top -->
 <div id="tooltip" style="visibility:hidden;position:absolute;left:0px;top:0px;opacity:0.9;background:yellow;border-style:outset;border-color:orange;word-wrap:break-word;max-width:40em;z-index:100">
 </div>
