@@ -275,6 +275,137 @@ window.onload = function() {
     for (i = 0; i < ltrNum; i++) {
         tmp[i].img.onmousedown = function(){return false;}
     }
+    function tileDragStart(i) {
+        tiles[i].origL = parseFloat(tiles[i].img.style.left);
+        tiles[i].origT = parseFloat(tiles[i].img.style.top);
+        tiles[i].img.style.zIndex = 100;
+    }
+    function tileOndrag(i) {
+        var fromX = tiles[i].x;
+        var fromY = tiles[i].y;
+        var imgL = parseFloat(tiles[i].img.style.left);
+        var imgT = parseFloat(tiles[i].img.style.top);
+        var toX = Math.round((imgL - rack0X) / cellW);
+        var toY = Math.round((imgT - rack0Y) / cellH);
+        if (Math.abs(imgL - tiles[i].origL) > 10 || 
+            Math.abs(imgT - tiles[i].origT) > 10) {
+            tiles[i].inDrag = true;
+        }
+
+        if (toX < 0) {return;}
+        if (toY < 0) {return;}
+        if (toX >= ltrNum) {return;}
+        if (toY > 1) {return;}
+
+        function tryPushRight() {
+            var foundOpenX = false;
+            for (var openX = toX + 1; openX < ltrNum; openX++) {
+                if (rack[toY][openX] == noLtr) {
+                    foundOpenX = true;
+                    break;
+                }
+            }
+            if (foundOpenX) {
+                for (var swapX = openX; swapX > toX; swapX--) {
+                    moveTile(swapX - 1, toY, swapX, toY);
+                }
+                return true;
+            }
+            return false;
+        }
+        function tryPushLeft() {
+            var foundOpenX = false;
+            for (var openX = toX - 1; openX >= 0; openX--) {
+                if (rack[toY][openX] == noLtr) {
+                    foundOpenX = true;
+                    break;
+                }
+            }
+            if (foundOpenX) {
+                for (var swapX = openX; swapX < toX; swapX++) {
+                    moveTile(swapX + 1, toY, swapX, toY);
+                }
+                return true;
+            }
+            return false;
+        }
+
+        if ((fromX != toX || fromY != toY) && 
+                rack[toY][toX] != noLtr) {
+            if (imgL <= (toX - 0.5) * cellW + rack0X) {
+                if (tryPushRight()) {
+                    return;
+                } else if (tryPushLeft()) {
+                    return;
+                }
+            } else {
+                if (tryPushLeft()) {
+                    return;
+                } else if (tryPushRight()) {
+                    return;
+                }
+            }
+            // swap
+            moveTile(toX, toY, fromX, fromY);
+            tiles[i].x = toX;
+            tiles[i].y = toY;
+        }
+    }
+    function tileXYToN(x, y) {
+        for (var i = 0; i < ltrNum; i++) {
+            if (tiles[i].x == x && tiles[i].y == y) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    function findSpaceOnRow(y) {
+        for (var x = 0; x < ltrNum; x++) {
+            if (rack[y][x] == noLtr) {
+                return x;
+            }
+        }
+        return -1;
+    }
+    function tileDragOnstop(i) {
+        tiles[i].inDrag = false;
+        var fromY = tiles[i].y;
+        var fromX = tiles[i].x;
+        var imgL = parseFloat(tiles[i].img.style.left);
+        var imgT = parseFloat(tiles[i].img.style.top);
+        var toX = Math.round((imgL - rack0X) / cellW);
+        var toY = Math.round((imgT - rack0Y) / cellH);
+        if (toX < 0) {toX = 0;}
+        if (toY < 0) {toY = 0;}
+        if (toX >= ltrNum) {toX = ltrNum - 1;}
+        if (toY > 1) {toY = 1;}
+        tmp = rack[fromY][fromX];
+        rack[fromY][fromX] = rack[toY][toX];
+        rack[toY][toX] = tmp;
+        tileI = tileXYToN(toX, toY);
+        if (tileI != -1) {
+            tiles[tileI].x = fromX;
+            tiles[tileI].y = fromY;
+            tiles[tileI].img.style.left = fromX * cellW + rack0X;
+            tiles[tileI].img.style.top = fromY * cellH + rack0Y;
+        }
+        tiles[i].x = toX;
+        tiles[i].y = toY;
+
+        tiles[i].img.style.zIndex = 1;
+        tiles[i].img.style.left = toX * cellW + rack0X;
+        tiles[i].img.style.top = toY * cellH + rack0Y;
+        checkIfGotWord();
+    }
+    function tileMouseup(i) {
+        var fromY = tiles[i].y;
+        var toY = 1 - fromY;
+        if (!tiles[i].inDrag) {
+            moveTile(tiles[i].x, fromY, findSpaceOnRow(toY), toY);
+            checkIfGotWord();
+            return;
+        }
+    }
     function doPickWords() {
         wdsRaw = pickWords();
         var shuffledLtrs = shuffle(strToArr(last(wdsRaw)));
@@ -285,114 +416,12 @@ window.onload = function() {
             tiles[i].img.id = "t" + i;
             tiles[i].x = i;
             tiles[i].y = 0;
-            var onstart = function(i) {
-                    tiles[i].img.style.zIndex = 100;
-                }.bind(null, i);
-            var ondrag = function(i) {
-                    var fromX = tiles[i].x;
-                    var fromY = tiles[i].y;
-                    var imgL = parseFloat(tiles[i].img.style.left);
-                    var imgT = parseFloat(tiles[i].img.style.top);
-                    var toX = Math.round((imgL - rack0X) / cellW);
-                    var toY = Math.round((imgT - rack0Y) / cellH);
-
-                    if (toX < 0) {return;}
-                    if (toY < 0) {return;}
-                    if (toX >= ltrNum) {return;}
-                    if (toY > 1) {return;}
-
-                    function tryPushRight() {
-                        var foundOpenX = false;
-                        for (var openX = toX + 1; openX < ltrNum; openX++) {
-                            if (rack[toY][openX] == noLtr) {
-                                foundOpenX = true;
-                                break;
-                            }
-                        }
-                        if (foundOpenX) {
-                            for (var swapX = openX; swapX > toX; swapX--) {
-                                moveTile(swapX - 1, toY, swapX, toY);
-                            }
-                            return true;
-                        }
-                        return false;
-                    }
-                    function tryPushLeft() {
-                        var foundOpenX = false;
-                        for (var openX = toX - 1; openX >= 0; openX--) {
-                            if (rack[toY][openX] == noLtr) {
-                                foundOpenX = true;
-                                break;
-                            }
-                        }
-                        if (foundOpenX) {
-                            for (var swapX = openX; swapX < toX; swapX++) {
-                                moveTile(swapX + 1, toY, swapX, toY);
-                            }
-                            return true;
-                        }
-                        return false;
-                    }
-
-                    if ((fromX != toX || fromY != toY) && 
-                            rack[toY][toX] != noLtr) {
-                        if (imgL <= (toX - 0.5) * cellW + rack0X) {
-                            if (tryPushRight()) {
-                                return;
-                            } else if (tryPushLeft()) {
-                                return;
-                            }
-                        } else {
-                            if (tryPushLeft()) {
-                                return;
-                            } else if (tryPushRight()) {
-                                return;
-                            }
-                        }
-                        // swap
-                        moveTile(toX, toY, fromX, fromY);
-                        tiles[i].x = toX;
-                        tiles[i].y = toY;
-                    }
-                }.bind(null, i);
-            var onstop = function(i) {
-                    var fromX = tiles[i].x;
-                    var fromY = tiles[i].y;
-                    var imgL = parseFloat(tiles[i].img.style.left);
-                    var imgT = parseFloat(tiles[i].img.style.top);
-                    var toX = Math.round((imgL - rack0X) / cellW);
-                    var toY = Math.round((imgT - rack0Y) / cellH);
-                    if (toX < 0) {toX = 0;}
-                    if (toY < 0) {toY = 0;}
-                    if (toX >= ltrNum) {toX = ltrNum - 1;}
-                    if (toY > 1) {toY = 1;}
-                    tmp = rack[fromY][fromX];
-                    rack[fromY][fromX] = rack[toY][toX];
-                    rack[toY][toX] = tmp;
-                    for (var tileI = 0; tileI < ltrNum; tileI++) {
-                        if (tiles[tileI].x == toX && tiles[tileI].y == toY) {
-                            tiles[tileI].x = fromX;
-                            tiles[tileI].y = fromY;
-                            tiles[tileI].img.style.left =
-                                fromX * cellW + rack0X;
-                            tiles[tileI].img.style.top =
-                                fromY * cellH + rack0Y;
-                            break;
-                        }
-                    }
-                    tiles[i].x = toX;
-                    tiles[i].y = toY;
-
-                    tiles[i].img.style.zIndex = 1;
-                    tiles[i].img.style.left = toX * cellW + rack0X;
-                    tiles[i].img.style.top = toY * cellH + rack0Y;
-                    checkIfGotWd();
-                }.bind(null, i);
             $("#t" + i).draggable({
-                start: onstart,
-                drag: ondrag,
-                stop: onstop
+                start: tileDragStart.bind(null, i),
+                drag: tileOndrag.bind(null, i),
+                stop: tileDragOnstop.bind(null, i)
             });
+            tiles[i].img.onmouseup = tileMouseup.bind(null, i);
         }
         wds = [];
         for (var i = 0; i < wdsRaw.length; i++) {
@@ -484,7 +513,7 @@ window.onload = function() {
         helpBox.style.left = window.innerWidth - 44;
         newRound.style.left = window.innerWidth - 44;
     }
-    function checkIfGotWd() {
+    function checkIfGotWord() {
         var rackWd = "";
         for (var i = 0; i < ltrNum; i++) {
             if (rack[1][i] != noLtr) {
@@ -508,7 +537,7 @@ window.onload = function() {
                         break;
                     }
                 }
-                checkIfGotWd();
+                checkIfGotWord();
                 break;
             }
         }
@@ -528,7 +557,7 @@ window.onload = function() {
                             break;
                         }
                     }
-                    checkIfGotWd();
+                    checkIfGotWord();
                     break;
                 }
             }
